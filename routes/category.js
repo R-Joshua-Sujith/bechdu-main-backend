@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Category = require('../models/category'); // Import your Mongoose model
+const Category = require('../models/Category'); // Import your Mongoose model
 
 // Handle POST request to create a new category
 router.post('/create', async (req, res) => {
@@ -116,8 +116,27 @@ router.delete('/delete/:categoryId', async (req, res) => {
   }
 });
 
+router.get('/fetch-category-id/:categoryId', async (req, res) => {
+  try {
+    const categoryId = req.params.categoryId;
 
-router.get('/fetch-category/:categoryName', async (req, res) => {
+    // Find the category by ID
+    const category = await Category.findById(categoryId);
+
+    // Check if the category with the given ID exists
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    // Respond with the category
+    res.json(category);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+router.get('/fetch-category-name/:categoryName', async (req, res) => {
   try {
     const categoryName = req.params.categoryName;
 
