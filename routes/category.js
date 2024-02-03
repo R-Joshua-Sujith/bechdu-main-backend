@@ -156,5 +156,44 @@ router.get('/fetch-category-name/:categoryName', async (req, res) => {
   }
 });
 
+router.get('/get-all-categories', async (req, res) => {
+  try {
+    const { page = 1, pageSize = 5, search = '' } = req.query;
+    const skip = (page - 1) * pageSize;
+
+    const query = {};
+
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { slug: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const allCategories = await Category.find(query)
+      .select('name slug sections') // Include the 'sections' field in the selection
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(pageSize));
+
+    const totalOrders = await Category.countDocuments(query);
+
+    // Create a new array with only the count of sections for each category
+    const sectionCounts = allCategories.map(category => ({
+      id: category._id,
+      name: category.name,
+      slug: category.slug,
+      sectionCount: category.sections ? category.sections.length : 0,
+    }));
+
+    res.json({
+      totalRows: totalOrders,
+      data: sectionCounts,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 module.exports = router;
