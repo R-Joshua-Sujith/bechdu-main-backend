@@ -4,6 +4,8 @@ const cors = require("cors")
 const dotenv = require("dotenv");
 
 const categoryRoutes = require('./routes/category');
+const adminRoutes = require("./routes/admin")
+const brandRoute = require("./routes/brand")
 
 dotenv.config();
 const app = express();
@@ -21,6 +23,8 @@ mongoose.connect(process.env.MONGO_URL)
 
 // Use category routes
 app.use('/api/category', categoryRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/brand", brandRoute);
 
 app.listen(5000, () => {
     console.log(`Server is running`);
