@@ -201,7 +201,7 @@ router.get('/fetch-category-name/:categoryName', async (req, res) => {
     }
 
     // Respond with the category
-    res.json(category);
+    res.status(200).json(category);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
@@ -238,7 +238,7 @@ router.get('/get-all-categories', async (req, res) => {
       sectionCount: category.sections ? category.sections.length : 0,
     }));
 
-    res.json({
+    res.status(200).json({
       totalRows: totalOrders,
       data: sectionCounts,
     });

@@ -149,7 +149,7 @@ router.get('/brands-category/:categoryType', async (req, res) => {
             brandImage: brand.brandImage,
         }));
 
-        res.json(brandNames);
+        res.status(200).json(brandNames);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -185,7 +185,7 @@ router.get('/brands-category-slug/:slug', async (req, res) => {
             brandImage: brand.brandImage,
         }));
 
-        res.json(brandNames);
+        res.status(200).json(brandNames);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
