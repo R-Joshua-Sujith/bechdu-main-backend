@@ -30,7 +30,7 @@ router.post('/create', verify, async (req, res) => {
   if (req.user.role === "superadmin") {
     try {
       // Extract data from the request body
-      let { category_type, sections, slug } = req.body;
+      let { category_type, categoryImage, sections, slug } = req.body;
 
       // Convert the name and slug to lowercase for case-insensitive comparison
       category_type = category_type.toLowerCase();
@@ -44,6 +44,7 @@ router.post('/create', verify, async (req, res) => {
       // Create a new Category document
       const newCategory = new Category({
         category_type,
+        categoryImage,
         slug,
         sections,
       });
@@ -52,7 +53,7 @@ router.post('/create', verify, async (req, res) => {
       await newCategory.save();
 
       // Respond with the saved category
-      res.status(201).json({ message: 'Category created successfully' });
+      res.status(200).json({ message: 'Category created successfully' });
     } catch (error) {
       console.log(error)
       // Handle errors
