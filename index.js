@@ -6,7 +6,7 @@ const dotenv = require("dotenv");
 const categoryRoutes = require('./routes/category');
 const adminRoutes = require("./routes/admin")
 const brandRoute = require("./routes/brand")
-const productRoute = require("./routes/product");
+const itemRoute = require("./routes/item")
 
 dotenv.config();
 const app = express();
@@ -24,7 +24,7 @@ mongoose.connect(process.env.MONGO_URL)
 app.use('/api/category', categoryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/brand", brandRoute);
-app.use("/product", productRoute);
+app.use("/product", itemRoute)
 
 app.listen(5000, () => {
     console.log(`Server is running`);

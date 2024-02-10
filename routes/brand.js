@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const BrandModel = require("../models/Brand")
 const Category = require('../models/Category');
+const ProductModel = require("../models/Item")
 
 router.post("/add-brand", async (req, res) => {
     try {
@@ -248,6 +249,48 @@ router.get('/series/:brandName/:categoryType', async (req, res) => {
     }
 });
 
+router.get('/series-slug/:brandName/:categorySlug', async (req, res) => {
+    try {
+        const { brandName, categorySlug } = req.params;
+
+        // Find the brand that matches the specified brandName
+        const brand = await BrandModel.findOne({ brandName });
+
+        if (!brand) {
+            return res.status(404).json({ error: 'Brand not found' });
+        }
+
+        // Find the category based on the provided slug
+        const category = await Category.findOne({ slug: categorySlug });
+
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found for the specified slug' });
+        }
+
+        const categoryType = category.category_type;
+
+        // Check if the specified categoryType exists in the brand's series object
+        if (!brand.series[categoryType]) {
+            return res.status(404).json({ error: 'Category type not found for this brand' });
+        }
+
+        // Fetch all seriesName values under the specified categoryType
+        const seriesNames = brand.series[categoryType].map(seriesItem => seriesItem.seriesName);
+        const seriesData = []
+        seriesNames.map(item => {
+            seriesData.push(({
+                value: item,
+                label: item
+            }))
+        });
+        res.json(seriesData);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+
 
 // API endpoint to list all models under a specific category, brand, and series
 router.get('/models/:category/:brand/:series', async (req, res) => {
@@ -276,6 +319,176 @@ router.get('/models/:category/:brand/:series', async (req, res) => {
         // Extract and return the models for the specified series
         const models = seriesData.models;
         res.json(models);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.get('/models-slug/:categorySlug/:brand/:series', async (req, res) => {
+    try {
+        const { categorySlug, brand, series } = req.params;
+
+        // Find the brand that matches the specified brandName
+        const brandData = await BrandModel.findOne({ brandName: brand });
+
+        if (!brandData) {
+            return res.status(404).json({ error: 'Brand not found' });
+        }
+
+        // Find the category based on the provided slug
+        const category = await Category.findOne({ slug: categorySlug });
+
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found for the specified slug' });
+        }
+
+        const categoryType = category.category_type;
+
+        // Check if the specified category exists in the brand's series object
+        if (!brandData.series[categoryType]) {
+            return res.status(404).json({ error: 'Category not found for this brand' });
+        }
+
+        // Find the series that matches the specified seriesName
+        const seriesData = brandData.series[categoryType].find((item) => item.seriesName === series);
+
+        if (!seriesData) {
+            return res.status(404).json({ error: 'Series not found for this category' });
+        }
+
+        // Extract and return the models for the specified series
+        const models = seriesData.models;
+        const modelData = []
+        models.map(item => {
+            modelData.push(({
+                value: item,
+                label: item
+            }))
+        });
+        res.json(modelData);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+
+
+router.get('/variants-slug/:categorySlug/:brand/:series/:model', async (req, res) => {
+    try {
+        const { categorySlug, brand, series, model } = req.params;
+
+        // Find the brand that matches the specified brandName
+        const brandData = await BrandModel.findOne({ brandName: brand });
+
+        if (!brandData) {
+            return res.status(404).json({ error: 'Brand not found' });
+        }
+
+        // Find the category based on the provided slug
+        const category = await Category.findOne({ slug: categorySlug });
+
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found for the specified slug' });
+        }
+
+        const categoryType = category.category_type;
+
+        // Check if the specified category exists in the brand's series object
+        if (!brandData.series[categoryType]) {
+            return res.status(404).json({ error: 'Category not found for this brand' });
+        }
+
+        // Find the series that matches the specified seriesName
+        const seriesData = brandData.series[categoryType].find((item) => item.seriesName === series);
+
+        if (!seriesData) {
+            return res.status(404).json({ error: 'Series not found for this category' });
+        }
+
+        // Find all products that match the specified criteria
+        const products = await ProductModel.find({
+            categoryType: categoryType,
+            brandName: brand,
+            seriesName: series,
+            model: model
+        });
+
+        if (!products || products.length === 0) {
+            return res.status(404).json({ error: 'No products found for the specified criteria' });
+        }
+
+        // Extract and return all variants of the products
+        const variants = products.map(product => product.variant);
+        const variantData = []
+        variants.map((item) => {
+            variantData.push({
+                value: item,
+                label: item
+            })
+        })
+        res.json(variantData);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.get('/variants/:categoryType/:brand/:series/:model', async (req, res) => {
+    try {
+        const { categoryType, brand, series, model } = req.params;
+
+        const category = await Category.findOne({ category_type: categoryType });
+
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found ' });
+        }
+
+
+        // Find the brand that matches the specified brandName
+        const brandData = await BrandModel.findOne({ brandName: brand });
+
+        if (!brandData) {
+            return res.status(404).json({ error: 'Brand not found' });
+        }
+
+        // Find the category based on the provided slug
+
+
+        // Check if the specified category exists in the brand's series object
+        if (!brandData.series[categoryType]) {
+            return res.status(404).json({ error: 'Category not found for this brand' });
+        }
+
+        // Find the series that matches the specified seriesName
+        const seriesData = brandData.series[categoryType].find((item) => item.seriesName === series);
+
+        if (!seriesData) {
+            return res.status(404).json({ error: 'Series not found for this category' });
+        }
+
+        // Find all products that match the specified criteria
+        const products = await ProductModel.find({
+            categoryType: categoryType,
+            brandName: brand,
+            seriesName: series,
+            model: model
+        });
+
+        const isValidModel = seriesData.models.includes(model);
+
+        if (!isValidModel) {
+            return res.status(404).json({ error: 'Invalid model for this series' });
+        }
+
+        if (!products || products.length === 0) {
+            return res.status(404).json({ error: 'No products found for the specified criteria' });
+        }
+
+        // Extract and return all variants of the products
+        const variants = products.map(product => product.variant);
+        res.json(variants);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });

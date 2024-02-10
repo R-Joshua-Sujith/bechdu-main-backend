@@ -2,10 +2,11 @@ const mongoose = require('mongoose');
 
 const optionSchema = new mongoose.Schema({
     optionHeading: String,
-    optionValue: String,
-    // You can adjust the data type of optionValue based on your specific needs
+    optionValue: String
 });
-const ProductSchema = new mongoose.Schema({
+
+const ItemSchema = new mongoose.Schema({
+    slug: { type: String, required: true, unique: true },
     productImage: { type: String },
     basePrice: { type: Number },
     estimatedPrice: { type: Number },
@@ -15,9 +16,9 @@ const ProductSchema = new mongoose.Schema({
     seriesName: { type: String },
     categoryType: { type: String },
     bestSelling: { type: String },
-    dynamicFields: [optionSchema]// Dynamic fields based on the category
+    dynamicFields: [optionSchema]
 });
 
-const ProductModel = mongoose.model('Product', ProductSchema);
+const ItemModel = mongoose.model("Item", ItemSchema);
 
-module.exports = ProductModel;
+module.exports = ItemModel;

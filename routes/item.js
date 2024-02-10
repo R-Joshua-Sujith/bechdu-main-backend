@@ -1,7 +1,7 @@
 const router = require("express").Router();
 const express = require("express");
-const ProductModel = require("../models/Product");
 const CategoryModel = require("../models/Category");
+const ProductModel = require("../models/Item")
 const BrandModel = require("../models/Brand")
 const multer = require('multer');
 const XLSX = require('xlsx');
@@ -30,6 +30,7 @@ router.post('/create-productss', upload2.single('productImage'), async (req, res
         await newProduct.save();
         res.status(200).json({ message: 'Product created successfully' });
     } catch (error) {
+        console.log(error)
         if (error.code === 11000 && error.keyPattern && error.keyPattern.slug) {
             res.status(400).json({ error: "Slug should be unique" })
         } else {
@@ -38,6 +39,20 @@ router.post('/create-productss', upload2.single('productImage'), async (req, res
     }
 });
 
+router.get('/product-slug/:slug', async (req, res) => {
+    const { slug } = req.params;
+    try {
+        const product = await ProductModel.findOne({ slug: slug }).exec();
+        if (product) {
+            res.json(product);
+        } else {
+            res.status(404).json({ error: 'Product not found' });
+        }
+    } catch (error) {
+        console.error("Error fetching product details:", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 // Assuming you have your ProductModel and app.post('/create-products') code above
 
 // Add a new route to get products based on categoryType and brandName
@@ -207,8 +222,9 @@ router.put('/update-product/:productId', async (req, res) => {
     } catch (error) {
         if (error.code === 11000 && error.keyPattern && error.keyPattern.slug) {
             res.status(400).json({ error: "Slug should be unique" })
-        } else
-            res.status(500).json({ error: error.message });
+        } else {
+            res.status(500).json({ error: "Internal Server error" })
+        }
     }
 });
 
