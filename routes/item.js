@@ -283,13 +283,13 @@ router.post('/api/products/bulk-upload', upload.single('file'), async (req, res)
         }
         const allHeaders = excelData[0];
 
-        const dynamic = allHeaders.filter((item) => !['_id', 'categoryType', 'brandName', 'seriesName', 'model', 'variant', 'basePrice', 'estimatedPrice', 'productImage', 'bestSelling'].includes(item));
+        const dynamic = allHeaders.filter((item) => !['_id', 'categoryType', 'brandName', 'seriesName', 'model', 'variant', 'slug', 'basePrice', 'estimatedPrice', 'productImage', 'bestSelling'].includes(item));
 
         for (const row of excelData.slice(1)) {
             const uniqueIdentifier = row[0];
             const existingItem = await ProductModel.findOne({ _id: uniqueIdentifier })
             const dynamicOptions = [];
-            let i = 10;
+            let i = 11;
             for (let x of dynamic) {
                 dynamicOptions.push({
                     optionHeading: x,
@@ -304,10 +304,11 @@ router.post('/api/products/bulk-upload', upload.single('file'), async (req, res)
                 existingItem.seriesName = row[3];
                 existingItem.model = row[4];
                 existingItem.variant = row[5];
-                existingItem.basePrice = row[6];
-                existingItem.estimatedPrice = row[7]
-                existingItem.productImage = row[8];
-                existingItem.bestSelling = row[9];
+                existingItem.slug = row[6];
+                existingItem.basePrice = row[7];
+                existingItem.estimatedPrice = row[8]
+                existingItem.productImage = row[9];
+                existingItem.bestSelling = row[10];
                 existingItem.dynamicFields = dynamicOptions;
 
                 await existingItem.save();
@@ -318,10 +319,11 @@ router.post('/api/products/bulk-upload', upload.single('file'), async (req, res)
                     seriesName: row[3],
                     model: row[4],
                     variant: row[5],
-                    basePrice: row[6],
-                    estimatedPrice: row[7],
-                    productImage: row[8],
-                    bestSelling: row[9],
+                    slug: row[6],
+                    basePrice: row[7],
+                    estimatedPrice: row[8],
+                    productImage: row[9],
+                    bestSelling: row[10],
                     dynamicFields: dynamicOptions,
                 })
                 await newProduct.save();
@@ -442,6 +444,56 @@ router.get('/generate-excel/:categoryType', async (req, res) => {
     } catch (error) {
         console.error('Error fetching category document:', error.message);
         res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+
+router.post('/calculate-price', async (req, res) => {
+    const { categoryType, productSlug, selectedOptions } = req.body;
+    console.log(categoryType, productSlug, selectedOptions)
+    try {
+        const product = await ProductModel.findOne(({ slug: productSlug })).exec();
+        if (product) {
+            const productOptions = product.dynamicFields;
+            let basePrice = product.basePrice;
+
+            // Iterate through selectedOptions and adjust base price accordingly
+            selectedOptions.forEach(selectedOption => {
+                // Find the corresponding option in productOptions
+                const correspondingOption = productOptions.find(option =>
+                    option.optionHeading === selectedOption.description
+                );
+
+                if (correspondingOption) {
+                    // Check if the selected option has a value field
+                    if ('value' in selectedOption) {
+                        // If value is false, subtract optionValue from base price
+                        if (!selectedOption.value) {
+                            basePrice -= parseInt(correspondingOption.optionValue);
+                        }
+                        // If value is true, do nothing
+                    } else {
+                        // If type is add, add optionValue to base price
+                        if (selectedOption.type === 'add') {
+                            basePrice += parseInt(correspondingOption.optionValue);
+                        }
+                        // If type is sub, subtract optionValue from base price
+                        else if (selectedOption.type === 'sub') {
+                            basePrice -= parseInt(correspondingOption.optionValue);
+                        }
+                    }
+                }
+            });
+
+            // Return the updated base price
+            res.json({ basePrice });
+            console.log(basePrice)
+        } else {
+            res.status(404).json({ error: 'Product not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server error' });
     }
 });
 

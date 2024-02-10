@@ -209,6 +209,28 @@ router.get('/fetch-category-name/:categoryName', async (req, res) => {
   }
 });
 
+router.get('/fetch-category-slug/:categorySlug', async (req, res) => {
+  try {
+    const categorySlug = req.params.categorySlug;
+
+    // Find the category by name
+    const category = await Category.findOne({ slug: categorySlug });
+
+    // Check if the category with the given name exists
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    // Respond with the category
+    res.status(200).json(category);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+
 router.get('/get-all-categories', async (req, res) => {
   try {
     const { page = 1, pageSize = 5, search = '' } = req.query;
