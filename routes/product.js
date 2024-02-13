@@ -337,7 +337,7 @@ router.get('/api/products/bulk-download/:categoryType', async (req, res) => {
         const excelData = [];
 
         // Add headers to the Excel data
-        const headers = ['_id', 'categoryType', 'brandName', 'seriesName', 'model', 'variant', 'basePrice', 'estimatedPrice', 'productImage', 'bestSelling'];
+        const headers = ['_id', 'categoryType', 'brandName', 'seriesName', 'model', 'variant', 'slug', 'basePrice', 'estimatedPrice', 'productImage', 'bestSelling'];
 
         // Assuming dynamicFields is an array in each product document
         if (products[0].dynamicFields) {
@@ -350,7 +350,7 @@ router.get('/api/products/bulk-download/:categoryType', async (req, res) => {
 
         // Add product data to the Excel data
         products.forEach(product => {
-            const rowData = [product._id.toString(), product.categoryType, product.brandName, product.seriesName, product.model, product.variant, product.basePrice, product.estimatedPrice, product.productImage, product.bestSelling];
+            const rowData = [product._id.toString(), product.categoryType, product.brandName, product.seriesName, product.model, product.variant, product.slug, product.basePrice, product.estimatedPrice, product.productImage, product.bestSelling];
 
             // Add dynamic field values to the row
             if (product.dynamicFields) {

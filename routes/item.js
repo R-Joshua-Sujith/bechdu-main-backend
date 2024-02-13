@@ -26,6 +26,11 @@ router.post('/create-productss', upload2.single('productImage'), async (req, res
         const { basePrice, variant, brandName, seriesName, categoryType, model, dynamicFields, bestSelling, estimatedPrice, slug } = req.body;
         const dynamicFieldsArray = JSON.parse(dynamicFields);
         const productImage = req.file.originalname;
+        const existingProduct = await ProductModel.findOne({ slug });
+        if (existingProduct) {
+            return res.status(400).json({ error: "Slug should be unique" });
+        }
+
         const newProduct = new ProductModel({ slug, productImage, basePrice, variant, brandName, seriesName, categoryType, model, dynamicFields: dynamicFieldsArray, bestSelling, estimatedPrice });
         await newProduct.save();
         res.status(200).json({ message: 'Product created successfully' });
@@ -355,7 +360,7 @@ router.get('/api/products/bulk-download/:categoryType', async (req, res) => {
         const excelData = [];
 
         // Add headers to the Excel data
-        const headers = ['_id', 'categoryType', 'brandName', 'seriesName', 'model', 'variant', 'basePrice', 'estimatedPrice', 'productImage', 'bestSelling'];
+        const headers = ['_id', 'categoryType', 'brandName', 'seriesName', 'model', 'variant', 'slug', 'basePrice', 'estimatedPrice', 'productImage', 'bestSelling'];
 
         // Assuming dynamicFields is an array in each product document
         if (products[0].dynamicFields) {
@@ -368,7 +373,7 @@ router.get('/api/products/bulk-download/:categoryType', async (req, res) => {
 
         // Add product data to the Excel data
         products.forEach(product => {
-            const rowData = [product._id.toString(), product.categoryType, product.brandName, product.seriesName, product.model, product.variant, product.basePrice, product.estimatedPrice, product.productImage, product.bestSelling];
+            const rowData = [product._id.toString(), product.categoryType, product.brandName, product.seriesName, product.model, product.variant, product.slug, product.basePrice, product.estimatedPrice, product.productImage, product.bestSelling];
 
             // Add dynamic field values to the row
             if (product.dynamicFields) {
@@ -415,7 +420,7 @@ router.get('/generate-excel/:categoryType', async (req, res) => {
         if (!category) {
             return res.status(404).json({ error: 'Category not found for the given categoryType.' });
         }
-        const headers = ['_id', 'categoryType', 'brandName', 'seriesName', 'model', 'variant', 'basePrice', 'estimatedPrice', 'productImage', 'bestSelling'];
+        const headers = ['_id', 'categoryType', 'brandName', 'seriesName', 'model', 'variant', 'slug', 'basePrice', 'estimatedPrice', 'productImage', 'bestSelling'];
 
 
         // Extract sections
