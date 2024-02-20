@@ -9,6 +9,7 @@ const brandRoute = require("./routes/brand");
 const itemRoute = require("./routes/item");
 const pincodeRoute = require("./routes/pincode");
 const userRoute = require("./routes/user")
+const orderRoute = require("./routes/order")
 
 dotenv.config();
 const app = express();
@@ -29,6 +30,8 @@ app.use("/api/brand", brandRoute);
 app.use("/product", itemRoute)
 app.use("/pincode", pincodeRoute);
 app.use("/user", userRoute);
+app.use("/order", orderRoute)
+
 
 app.listen(5000, () => {
     console.log(`Server is running`);

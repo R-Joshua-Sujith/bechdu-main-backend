@@ -151,77 +151,7 @@ router.get('/api/users/:phone', async (req, res) => {
 });
 
 
-router.get('/get-all-users', async (req, res) => {
-    try {
-        const { page = 1, pageSize = 5, search = '' } = req.query;
-        const skip = (page - 1) * pageSize;
 
-        const query = {};
-
-        if (search) {
-            query.$or = [
-                { email: { $regex: search, $options: 'i' } },
-                { firstName: { $regex: search, $options: 'i' } },
-                { lastName: { $regex: search, $options: 'i' } },
-                { phone: { $regex: search, $options: 'i' } },
-                { zipCode: { $regex: search, $options: 'i' } },
-                { city: { $regex: search, $options: 'i' } }
-            ];
-        }
-
-        const allUsers = await UserModel.find(query)
-            .select('email firstName lastName phone addPhone address zipCode city')
-            .sort({ createdAt: -1 }) // Assuming you have a createdAt field in your UserSchema
-            .skip(skip)
-            .limit(parseInt(pageSize));
-
-        const totalUsers = await UserModel.countDocuments(query);
-
-        res.json({
-            totalRows: totalUsers,
-            data: allUsers,
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-})
-
-router.get('/get-all-userss', async (req, res) => {
-    try {
-        const { page = 1, pageSize = 10, search = '' } = req.query;
-        const skip = (page - 1) * pageSize;
-
-        const query = {};
-
-        if (search) {
-            query.$or = [
-                { email: { $regex: search, $options: 'i' } },
-                { firstName: { $regex: search, $options: 'i' } },
-                { lastName: { $regex: search, $options: 'i' } },
-                { phone: { $regex: search, $options: 'i' } },
-                { zipCode: { $regex: search, $options: 'i' } },
-                { city: { $regex: search, $options: 'i' } }
-            ];
-        }
-
-        const allUsers = await UserModel.find(query)
-            .select('email firstName lastName phone addPhone address zipCode city')
-            .sort({ createdAt: -1 }) // Assuming you have a createdAt field in your UserSchema
-            .skip(skip)
-            .limit(parseInt(pageSize));
-
-        const totalUsers = await UserModel.countDocuments(query);
-        const headers = ["email", "firstName", "lastName", "phone", "addPhone", "address", "zipCode", "city"];
-
-        res.send({
-            headers,
-            totalRows: totalUsers,
-            data: allUsers,
-        });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-})
 
 router.delete('/delete/users/:userId', async (req, res) => {
     try {
@@ -403,6 +333,120 @@ router.post('/users/add-address', async (req, res) => {
         res.status(500).json({ message: 'Server Error' });
     }
 });
+
+router.delete('/users/delete-address/:phone/:index', async (req, res) => {
+    try {
+        const { phone, index } = req.params;
+        // Find the user by phone number
+        const user = await UserModel.findOne({ phone });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Check if the index is valid
+        if (index < 0 || index >= user.address.length) {
+            return res.status(400).json({ error: 'Invalid address index' });
+        }
+
+        // Remove the address at the specified index
+        user.address.splice(index, 1);
+
+        // Save the updated user
+        await user.save();
+
+        res.status(200).json({ message: 'Address deleted successfully', user });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server Error' });
+    }
+});
+
+
+router.get('/get-user-info/:phone', async (req, res) => {
+    try {
+        const { phone } = req.params;
+        const user = await UserModel.findOne({ phone });
+        if (!user) {
+            console.log(error)
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.status(200).json({ user });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server Error' });
+    }
+})
+
+router.get('/get-user-info-id/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const user = await UserModel.findOne({ _id: id });
+        if (!user) {
+            console.log(error)
+            return res.status(404).json({ error: 'User not found' });
+        }
+        res.status(200).json({ user });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Server Error' });
+    }
+})
+
+router.post("/save-user/:phone", async (req, res) => {
+    try {
+        const { phone } = req.params;
+        const { name, email, addPhone } = req.body;
+        const user = await UserModel.findOne({ phone });
+        if (!user) {
+            return res.status(404).json({ error: "User not found" })
+        }
+        user.name = name;
+        user.email = email;
+        user.addPhone = addPhone;
+
+        await user.save();
+        res.status(200).json({ message: "Data saved successfully", user });
+    } catch (error) {
+        res.status(500).json({ error: "Server Error" })
+    }
+})
+
+
+router.get('/get-all-users', async (req, res) => {
+    try {
+        const { page = 1, pageSize = 10, search = '' } = req.query;
+        const skip = (page - 1) * pageSize;
+
+        const query = {};
+
+        if (search) {
+            query.$or = [
+                { email: { $regex: search, $options: 'i' } },
+                { name: { $regex: search, $options: 'i' } },
+                { phone: { $regex: search, $options: 'i' } },
+                { addPhone: { $regex: search, $options: 'i' } },
+                { pincode: { $regex: search, $options: 'i' } },
+                { city: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const allUsers = await UserModel.find(query)
+            .select('email name phone addPhone pincode city')
+            .sort({ createdAt: -1 }) // Assuming you have a createdAt field in your UserSchema
+            .skip(skip)
+            .limit(parseInt(pageSize));
+
+        const totalUsers = await UserModel.countDocuments(query);
+        res.send({
+            totalRows: totalUsers,
+            data: allUsers,
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+})
+
 
 
 module.exports = router;
