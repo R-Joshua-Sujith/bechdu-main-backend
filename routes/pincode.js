@@ -117,7 +117,7 @@ router.delete('/delete-pincode/:id', async (req, res) => {
 router.get('/cityNames', async (req, res) => {
     try {
         const uniqueCityNames = await PincodeModel.distinct('cityName');
-        res.json(uniqueCityNames);
+        res.status(200).json(uniqueCityNames);
     } catch (error) {
         res.status(500).json({ error: 'Internal Server Error' });
     }
@@ -127,7 +127,7 @@ router.get('/city/:cityName/pincodes', async (req, res) => {
     const { cityName } = req.params;
     try {
         const pinCodes = await PincodeModel.find({ cityName });
-        res.json(pinCodes);
+        res.status(200).json(pinCodes);
     } catch (error) {
         res.status(500).json({ error: 'Internal Server Error' });
     }

@@ -54,6 +54,8 @@ router.post('/create-order', async (req, res) => {
         existingUser.name = user.name;
         existingUser.addPhone = user.addPhone;
         existingUser.email = user.email;
+        existingUser.city = user.city;
+        existingUser.pincode = user.pincode;
         await existingUser.save();
 
         // Create a new order instance using the OrderModel

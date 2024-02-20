@@ -7,6 +7,21 @@ const jwt = require("jsonwebtoken");
 dotenv.config();
 const secretKey = process.env.JWT_SECRET_KEY
 
+const verify = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        const token = authHeader.split(" ")[1];
+        jwt.verify(token, secretKey, (err, user) => {
+            if (err) {
+                return res.status(401).json({ error: "Token is not valid" });
+            }
+            req.user = user;
+            next();
+        })
+    } else {
+        res.status(400).json({ error: "You are not authenticated" });
+    }
+}
 
 router.post('/login', async (req, res) => {
     try {
@@ -18,7 +33,7 @@ router.post('/login', async (req, res) => {
             phone: phone,
         }
         const options = {
-            expiresIn: "3d"
+            expiresIn: "1h"
         }
         const token = jwt.sign(payload, secretKey, options)
 
@@ -447,6 +462,64 @@ router.get('/get-all-users', async (req, res) => {
     }
 })
 
+router.put('/users/:phoneNumber/pincode', verify, async (req, res) => {
+    const phoneNumber = req.params.phoneNumber;
+    const newPincode = req.body.pincode;
+    if (req.user.phone === phoneNumber) {
+        try {
+            // Find the user by phone number
+            const user = await UserModel.findOne({ phone: phoneNumber });
 
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            // Update the pincode field
+            user.pincode = newPincode;
+
+            // Save the updated user
+            await user.save();
+
+            return res.status(200).json({ message: 'Pincode updated successfully' });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    }
+    else {
+        res.status(403).json({ error: "No Access to perform this action" })
+    }
+});
+
+router.put('/users/:phoneNumber/city', verify, async (req, res) => {
+
+    const phoneNumber = req.params.phoneNumber;
+    const newCity = req.body.city;
+    if (req.user.phone === phoneNumber) {
+        try {
+            // Find the user by phone number
+            const user = await UserModel.findOne({ phone: phoneNumber });
+
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            // Update the pincode field
+            user.city = newCity;
+            user.pincode = "";
+
+            // Save the updated user
+            await user.save();
+
+            return res.status(200).json({ message: 'City updated successfully' });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    } else {
+        res.status(403).json({ error: "No Access to perform this action" })
+    }
+
+});
 
 module.exports = router;
