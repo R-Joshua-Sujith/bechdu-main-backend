@@ -56,6 +56,11 @@ router.post('/create-order', async (req, res) => {
         existingUser.email = user.email;
         existingUser.city = user.city;
         existingUser.pincode = user.pincode;
+
+        if (promo.code) {
+            // Push the promo code into the promoCodes array in UserModel
+            existingUser.promoCodes.push(promo.code);
+        }
         await existingUser.save();
 
         // Create a new order instance using the OrderModel

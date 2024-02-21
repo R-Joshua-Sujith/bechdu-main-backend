@@ -108,14 +108,14 @@ router.post('/check/promocode', async (req, res) => {
         const promoCode = await PromoCodeModel.findOne({ code: enteredCode });
 
         if (!promoCode) {
-            return res.json({ valid: false, message: 'Invalid promo code' });
+            return res.status(404).json({ valid: false, error: 'Invalid promo code' });
         }
 
         // Check if the promo code is already used by the user
         const user = await UserModel.findOne({ phone: phone, promoCodes: enteredCode });
 
         if (user) {
-            return res.json({ valid: false, message: 'Promo code already used by this user' });
+            return res.status(409).json({ valid: false, error: 'Promo code already used by this user' });
         }
 
         // If the promo code is valid and not used by the user, return its value
