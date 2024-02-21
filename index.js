@@ -10,6 +10,7 @@ const itemRoute = require("./routes/item");
 const pincodeRoute = require("./routes/pincode");
 const userRoute = require("./routes/user")
 const orderRoute = require("./routes/order")
+const promoRoute = require("./routes/promoCode")
 
 dotenv.config();
 const app = express();
@@ -30,7 +31,8 @@ app.use("/api/brand", brandRoute);
 app.use("/product", itemRoute)
 app.use("/pincode", pincodeRoute);
 app.use("/user", userRoute);
-app.use("/order", orderRoute)
+app.use("/order", orderRoute);
+app.use("/promo", promoRoute);
 
 
 app.listen(5000, () => {
