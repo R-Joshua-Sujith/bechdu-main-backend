@@ -10,7 +10,7 @@ const secretKey = process.env.JWT_SECRET_KEY
 
 
 router.post('/register', async (req, res) => {
-    const { email, password, isAdmin } = req.body;
+    const { email, password, role } = req.body;
 
     try {
         const existingAdmin = await Admin.findOne({ email });
@@ -22,7 +22,7 @@ router.post('/register', async (req, res) => {
         // Hash the password before saving it
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        const newAdmin = new Admin({ email, password: hashedPassword, isAdmin });
+        const newAdmin = new Admin({ email, password: hashedPassword, role });
         await newAdmin.save();
 
         res.status(201).json({ message: 'Registration successful' });
