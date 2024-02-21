@@ -503,4 +503,62 @@ router.post('/calculate-price', async (req, res) => {
 });
 
 
+router.post('/calculate-price', async (req, res) => {
+    const { categoryType, productSlug, selectedOptions } = req.body;
+    console.log(categoryType, productSlug, selectedOptions)
+    try {
+        const product = await ProductModel.findOne(({ slug: productSlug })).exec();
+        if (product) {
+            const productOptions = product.dynamicFields;
+            let basePrice = product.basePrice;
+
+            // Iterate through selectedOptions and adjust base price accordingly
+            selectedOptions.forEach(selectedOption => {
+                // Find the corresponding option in productOptions
+                const correspondingOption = productOptions.find(option =>
+                    option.optionHeading === selectedOption.description
+                );
+
+                if (correspondingOption) {
+                    // Check if the selected option has a value field
+                    if ('value' in selectedOption) {
+                        if (selectedOption.value === false) {
+                            basePrice -= parseInt(correspondingOption.optionValue);
+                        } else if (selectedOption.value === null) {
+                            if (selectedOption.type === 'add') {
+                                basePrice += parseInt(correspondingOption.optionValue);
+                            }
+
+                            else if (selectedOption.type === 'sub') {
+                                basePrice -= parseInt(correspondingOption.optionValue);
+                            }
+                        }
+                        // If value is true, do nothing
+                    } else {
+                        // If type is add, add optionValue to base price
+                        if (selectedOption.type === 'add') {
+                            basePrice += parseInt(correspondingOption.optionValue);
+                        }
+                        // If type is sub, subtract optionValue from base price
+                        else if (selectedOption.type === 'sub') {
+                            basePrice -= parseInt(correspondingOption.optionValue);
+                        }
+                    }
+                }
+            });
+
+            // Return the updated base price
+            res.json({ basePrice });
+            console.log(basePrice)
+        } else {
+            res.status(404).json({ error: 'Product not found' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server error' });
+    }
+});
+
+
+
 module.exports = router;
