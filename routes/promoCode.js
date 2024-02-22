@@ -1,6 +1,28 @@
 const router = require("express").Router();
 const PromoCodeModel = require("../models/PromoCode")
 const UserModel = require("../models/User")
+const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
+
+dotenv.config();
+const secretKey = process.env.JWT_SECRET_KEY
+
+const verify = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        const token = authHeader.split(" ")[1];
+        jwt.verify(token, secretKey, (err, user) => {
+            if (err) {
+                return res.status(401).json({ error: "Session Expired" });
+            }
+            req.user = user;
+            next();
+        })
+    } else {
+        res.status(400).json({ error: "You are not authenticated" });
+    }
+}
+
 
 router.post('/create/promocode', async (req, res) => {
     try {
@@ -100,29 +122,34 @@ router.delete('/delete/promocode/:id', async (req, res) => {
 });
 
 
-router.post('/check/promocode', async (req, res) => {
-    try {
-        const { enteredCode, phone } = req.body;
+router.post('/check/promocode', verify, async (req, res) => {
+    if (req.user.phone === req.body.phone) {
+        try {
+            const { enteredCode, phone } = req.body;
 
-        // Find the promo code in the database
-        const promoCode = await PromoCodeModel.findOne({ code: enteredCode });
+            // Find the promo code in the database
+            const promoCode = await PromoCodeModel.findOne({ code: enteredCode });
 
-        if (!promoCode) {
-            return res.status(404).json({ valid: false, error: 'Invalid promo code' });
+            if (!promoCode) {
+                return res.status(404).json({ error: 'Invalid promo code' });
+            }
+
+            // Check if the promo code is already used by the user
+            const user = await UserModel.findOne({ phone: phone, promoCodes: enteredCode });
+
+            if (user) {
+                return res.status(409).json({ error: 'Promo code already used by this user' });
+            }
+
+            // If the promo code is valid and not used by the user, return its value
+            res.json({ value: promoCode.discountAmount, message: 'Promo Code Applied Successfully' });
+        } catch (error) {
+            console.error('Error checking promo code validity:', error);
+            res.status(500).json({ error: 'Internal Server Error' });
         }
-
-        // Check if the promo code is already used by the user
-        const user = await UserModel.findOne({ phone: phone, promoCodes: enteredCode });
-
-        if (user) {
-            return res.status(409).json({ valid: false, error: 'Promo code already used by this user' });
-        }
-
-        // If the promo code is valid and not used by the user, return its value
-        res.json({ valid: true, value: promoCode.discountAmount, message: 'Promo Code Applied Successfully' });
-    } catch (error) {
-        console.error('Error checking promo code validity:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+    } else {
+        res.status(403).json({ error: "No Access to perform this action" })
     }
+
 });
 module.exports = router;

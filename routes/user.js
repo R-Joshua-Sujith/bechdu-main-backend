@@ -13,7 +13,7 @@ const verify = (req, res, next) => {
         const token = authHeader.split(" ")[1];
         jwt.verify(token, secretKey, (err, user) => {
             if (err) {
-                return res.status(401).json({ error: "Token is not valid" });
+                return res.status(401).json({ error: "Session Expired" });
             }
             req.user = user;
             next();
@@ -32,10 +32,8 @@ router.post('/login', async (req, res) => {
         const payload = {
             phone: phone,
         }
-        const options = {
-            expiresIn: "1h"
-        }
-        const token = jwt.sign(payload, secretKey, options)
+
+        const token = jwt.sign(payload, secretKey);
 
         if (user) {
             // If user exists, send a success response with the user details
@@ -325,56 +323,66 @@ router.post('/sms-login', async (req, res) => {
     res.json({ user });
 });
 
-router.post('/users/add-address', async (req, res) => {
-    try {
-        const { phone, address } = req.body;
+router.post('/users/add-address', verify, async (req, res) => {
+    if (req.user.phone === req.body.phone) {
+        try {
+            const { phone, address } = req.body;
 
-        // Find the user by phone number
-        const user = await UserModel.findOne({ phone });
+            // Find the user by phone number
+            const user = await UserModel.findOne({ phone });
 
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
+            if (!user) {
+                return res.status(404).json({ message: 'User not found' });
+            }
+
+            // Add the address to the user's address array
+            user.address.push(address);
+
+            // Save the updated user
+            await user.save();
+
+            res.status(200).json({ message: 'Address added successfully', user });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Server Error' });
         }
-
-        // Add the address to the user's address array
-        user.address.push(address);
-
-        // Save the updated user
-        await user.save();
-
-        res.status(200).json({ message: 'Address added successfully', user });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
+    } else {
+        res.status(403).json({ error: "No Access to perform this action" })
     }
+
 });
 
-router.delete('/users/delete-address/:phone/:index', async (req, res) => {
-    try {
-        const { phone, index } = req.params;
-        // Find the user by phone number
-        const user = await UserModel.findOne({ phone });
+router.delete('/users/delete-address/:phone/:index', verify, async (req, res) => {
+    if (req.user.phone === req.params.phone) {
+        try {
+            const { phone, index } = req.params;
+            // Find the user by phone number
+            const user = await UserModel.findOne({ phone });
 
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            if (!user) {
+                return res.status(404).json({ error: 'User not found' });
+            }
+
+            // Check if the index is valid
+            if (index < 0 || index >= user.address.length) {
+                return res.status(400).json({ error: 'Invalid address index' });
+            }
+
+            // Remove the address at the specified index
+            user.address.splice(index, 1);
+
+            // Save the updated user
+            await user.save();
+
+            res.status(200).json({ message: 'Address deleted successfully', user });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Server Error' });
         }
-
-        // Check if the index is valid
-        if (index < 0 || index >= user.address.length) {
-            return res.status(400).json({ error: 'Invalid address index' });
-        }
-
-        // Remove the address at the specified index
-        user.address.splice(index, 1);
-
-        // Save the updated user
-        await user.save();
-
-        res.status(200).json({ message: 'Address deleted successfully', user });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Server Error' });
+    } else {
+        res.status(403).json({ error: "No Access to perform this action" })
     }
+
 });
 
 

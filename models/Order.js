@@ -8,7 +8,6 @@ const orderSchema = new mongoose.Schema({
         phone: { type: String },
         addPhone: { type: String, default: "" },
         address: { type: String },
-        idCard: { type: Buffer, required: false }
     },
     payment: {
         type: { type: String },
@@ -20,6 +19,7 @@ const orderSchema = new mongoose.Schema({
     },
     productDetails: {
         name: { type: String },
+        slug: { type: String },
         image: { type: String },
         price: { type: String },
         options: {

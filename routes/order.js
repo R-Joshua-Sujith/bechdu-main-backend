@@ -1,11 +1,16 @@
 const router = require("express").Router();
 const OrderModel = require("../models/Order");
 const CounterModel = require("../models/Counter")
-const UserModel = require("../models/User")
+const UserModel = require("../models/User");
+const AbundantOrderModel = require("../models/AbandonedOrder")
 const multer = require('multer');
-
+const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+
+dotenv.config();
+const secretKey = process.env.JWT_SECRET_KEY
 
 async function getNextSequenceValue() {
     try {
@@ -38,53 +43,74 @@ async function generateCustomID() {
     }
 }
 
-
-router.post('/create-order', async (req, res) => {
-    try {
-        const {
-            user,
-            payment,
-            pickUpDetails,
-            productDetails,
-            promo
-        } = req.body;
-
-        const orderID = await generateCustomID();
-        const existingUser = await UserModel.findOne({ phone: user.phone })
-        existingUser.name = user.name;
-        existingUser.addPhone = user.addPhone;
-        existingUser.email = user.email;
-        existingUser.city = user.city;
-        existingUser.pincode = user.pincode;
-
-        if (promo.code) {
-            // Push the promo code into the promoCodes array in UserModel
-            existingUser.promoCodes.push(promo.code);
-        }
-        await existingUser.save();
-
-        // Create a new order instance using the OrderModel
-        const newOrder = new OrderModel({
-            orderId: orderID,
-            user,
-            payment,
-            pickUpDetails,
-            productDetails,
-            promo
-        });
-
-        // Save the new order to the database
-        const savedOrder = await newOrder.save();
-        // const deletedAbundantOrder = await AbundantOrderModel.deleteMany({
-        //     phone,
-        //     'productDetails.productName': productDetails.productName,
-        // });
-
-        res.status(201).json({ message: 'Order created successfully', order: savedOrder });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal Server Error' });
+const verify = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader) {
+        const token = authHeader.split(" ")[1];
+        jwt.verify(token, secretKey, (err, user) => {
+            if (err) {
+                return res.status(401).json({ error: "Session Expired" });
+            }
+            req.user = user;
+            next();
+        })
+    } else {
+        res.status(400).json({ error: "You are not authenticated" });
     }
+}
+
+
+router.post('/create-order', verify, async (req, res) => {
+    if (req.user.phone === req.body.user.phone) {
+        try {
+            const {
+                user,
+                payment,
+                pickUpDetails,
+                productDetails,
+                promo
+            } = req.body;
+
+            const orderID = await generateCustomID();
+            const existingUser = await UserModel.findOne({ phone: user.phone })
+            existingUser.name = user.name;
+            existingUser.addPhone = user.addPhone;
+            existingUser.email = user.email;
+            existingUser.city = user.city;
+            existingUser.pincode = user.pincode;
+
+            if (promo.code) {
+                // Push the promo code into the promoCodes array in UserModel
+                existingUser.promoCodes.push(promo.code);
+            }
+            await existingUser.save();
+
+            // Create a new order instance using the OrderModel
+            const newOrder = new OrderModel({
+                orderId: orderID,
+                user,
+                payment,
+                pickUpDetails,
+                productDetails,
+                promo
+            });
+
+            // Save the new order to the database
+            const savedOrder = await newOrder.save();
+            const deletedAbundantOrder = await AbundantOrderModel.deleteMany({
+                'user.phone': user.phone,
+                'productDetails.slug': productDetails.slug,
+            });
+
+            res.status(201).json({ message: 'Order created successfully', order: savedOrder });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    } else {
+        res.status(403).json({ error: "No Access to perform this action" })
+    }
+
 });
 
 router.get('/get-user-orders/:phone', async (req, res) => {
