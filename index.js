@@ -12,6 +12,7 @@ const userRoute = require("./routes/user")
 const orderRoute = require("./routes/order")
 const promoRoute = require("./routes/promoCode")
 const abundantRoute = require("./routes/abundantOrder")
+const statisticRoute = require("./routes/statistics")
 
 dotenv.config();
 const app = express();
@@ -35,6 +36,7 @@ app.use("/user", userRoute);
 app.use("/order", orderRoute);
 app.use("/promo", promoRoute);
 app.use("/abundant", abundantRoute)
+app.use("/statistic", statisticRoute)
 
 
 app.listen(5000, () => {
