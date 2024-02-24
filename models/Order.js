@@ -8,6 +8,8 @@ const orderSchema = new mongoose.Schema({
         phone: { type: String },
         addPhone: { type: String, default: "" },
         address: { type: String },
+        pincode: { type: String },
+        city: { type: String }
     },
     payment: {
         type: { type: String },

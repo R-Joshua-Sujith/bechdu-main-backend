@@ -13,6 +13,8 @@ const orderRoute = require("./routes/order")
 const promoRoute = require("./routes/promoCode")
 const abundantRoute = require("./routes/abundantOrder")
 const statisticRoute = require("./routes/statistics")
+const partnerRoute = require("./routes/partner")
+const coinRoute = require("./routes/coins")
 
 dotenv.config();
 const app = express();
@@ -35,8 +37,10 @@ app.use("/pincode", pincodeRoute);
 app.use("/user", userRoute);
 app.use("/order", orderRoute);
 app.use("/promo", promoRoute);
-app.use("/abundant", abundantRoute)
-app.use("/statistic", statisticRoute)
+app.use("/abundant", abundantRoute);
+app.use("/statistic", statisticRoute);
+app.use("/partner", partnerRoute);
+app.use("/coins", coinRoute);
 
 
 app.listen(5000, () => {

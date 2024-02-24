@@ -6,6 +6,7 @@ const ProductModel = require("../models/Item");
 const UserModel = require("../models/User");
 const OrderModel = require("../models/Order");
 const AbundantOrderModel = require("../models/AbandonedOrder");
+const PartnerModel = require("../models/Partner")
 
 router.get("/documentCount", async (req, res) => {
     try {
@@ -15,8 +16,21 @@ router.get("/documentCount", async (req, res) => {
         const orderCount = await OrderModel.countDocuments();
         const userCount = await UserModel.countDocuments();
         const abundantCount = await AbundantOrderModel.countDocuments();
+        const partnerCount = await PartnerModel.countDocuments();
 
-
+        const pickUpPersonsCount = await PartnerModel.aggregate([
+            {
+                $project: {
+                    pickUpPersonsCount: { $size: "$pickUpPersons" }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    total: { $sum: "$pickUpPersonsCount" }
+                }
+            }
+        ]);
         const data = [{
             name: "Categories",
             count: categoryCount,
@@ -41,6 +55,14 @@ router.get("/documentCount", async (req, res) => {
             name: "Abandoned Orders",
             count: abundantCount,
             route: "/view-abandoned-orders"
+        }, {
+            name: "Partners",
+            count: partnerCount,
+            route: "/view-partner"
+        }, {
+            name: "Pick-up Persons",
+            count: pickUpPersonsCount.length > 0 ? pickUpPersonsCount[0].total : 0,
+            route: "/view-partner"
         }]
         res.json(data);
     } catch (error) {
