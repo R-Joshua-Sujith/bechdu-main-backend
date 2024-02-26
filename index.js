@@ -16,6 +16,7 @@ const statisticRoute = require("./routes/statistics")
 const partnerRoute = require("./routes/partner")
 const coinRoute = require("./routes/coins")
 const uploadRoute = require("./routes/uploads")
+const dynamicRoute = require("./routes/dynamic")
 
 dotenv.config();
 const app = express();
@@ -43,6 +44,9 @@ app.use("/statistic", statisticRoute);
 app.use("/partner", partnerRoute);
 app.use("/coins", coinRoute);
 app.use("/uploads", uploadRoute);
+app.use("/dynamic", dynamicRoute)
+
+
 
 app.listen(5000, () => {
     console.log(`Server is running`);
