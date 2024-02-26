@@ -15,14 +15,15 @@ const abundantRoute = require("./routes/abundantOrder")
 const statisticRoute = require("./routes/statistics")
 const partnerRoute = require("./routes/partner")
 const coinRoute = require("./routes/coins")
+const uploadRoute = require("./routes/uploads")
 
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use('/uploads', express.static('uploads'));
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ limit: '500mb', extended: true }));
 
 mongoose.connect(process.env.MONGO_URL)
     .then(() => console.log("DB Connection Successful"))
@@ -41,7 +42,7 @@ app.use("/abundant", abundantRoute);
 app.use("/statistic", statisticRoute);
 app.use("/partner", partnerRoute);
 app.use("/coins", coinRoute);
-
+app.use("/uploads", uploadRoute);
 
 app.listen(5000, () => {
     console.log(`Server is running`);

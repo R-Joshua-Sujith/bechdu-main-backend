@@ -386,19 +386,25 @@ router.delete('/users/delete-address/:phone/:index', verify, async (req, res) =>
 });
 
 
-router.get('/get-user-info/:phone', async (req, res) => {
-    try {
-        const { phone } = req.params;
-        const user = await UserModel.findOne({ phone });
-        if (!user) {
-            console.log(error)
-            return res.status(404).json({ error: 'User not found' });
+router.get('/get-user-info/:phone', verify, async (req, res) => {
+    const phoneNumber = req.params.phone;
+    if (req.user.phone === phoneNumber) {
+        try {
+            const { phone } = req.params;
+            const user = await UserModel.findOne({ phone });
+            if (!user) {
+                console.log(error)
+                return res.status(404).json({ error: 'User not found' });
+            }
+            res.status(200).json({ user });
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Server Error' });
         }
-        res.status(200).json({ user });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Server Error' });
+    } else {
+        return res.status(403).json({ error: "No Access to perform this  action" });
     }
+
 })
 
 router.get('/get-user-info-id/:id', async (req, res) => {

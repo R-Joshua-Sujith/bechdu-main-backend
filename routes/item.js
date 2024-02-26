@@ -25,6 +25,7 @@ router.post('/create-productss', upload2.single('productImage'), async (req, res
     try {
         const { basePrice, variant, brandName, seriesName, categoryType, model, dynamicFields, bestSelling, estimatedPrice, slug } = req.body;
         const dynamicFieldsArray = JSON.parse(dynamicFields);
+        
         const productImage = req.file.originalname;
         const existingProduct = await ProductModel.findOne({ slug });
         if (existingProduct) {
