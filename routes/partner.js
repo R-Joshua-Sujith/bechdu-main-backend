@@ -242,4 +242,84 @@ router.post('/add-pickup-person/:partnerId', async (req, res) => {
 });
 
 
+
+//mobile
+router.post('/partner-login', async (req, res) => {
+    try {
+        const { phone } = req.body;
+
+        // Check if a partner with the provided phone number exists
+        const partner = await PartnerModel.findOne({ phone });
+
+        if (!partner) {
+            return res.status(404).json({ message: 'Partner not found' });
+        }
+
+        // Invalidate any previous session if partner is already logged in
+        if (partner.loggedInDevice) {
+            partner.loggedInDevice = null;
+            await partner.save();
+        }
+
+        const payload = {
+            phone: phone,
+            role: partner.role,
+            id: partner._id,
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(payload, secretKey);
+
+        // Store device identifier in partner document
+        partner.loggedInDevice = req.headers['user-agent']; // Using user-agent as device identifier
+        await partner.save();
+
+        res.json({ token });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+router.post('/login/pickup', async (req, res) => {
+    try {
+        const { phone } = req.body;
+
+        // Find the partner with the specified pickUpPerson phone number
+        const partner = await PartnerModel.findOne({ 'pickUpPersons.phone': phone });
+
+        if (!partner) {
+            return res.status(404).json({ message: 'Pickup person not found' });
+        }
+
+        // Find the pickUpPerson within the partner
+        const pickUpPerson = partner.pickUpPersons.find(person => person.phone === phone);
+
+        // Invalidate any previous session if pickUpPerson is already logged in
+        if (pickUpPerson.loggedInDevice) {
+            pickUpPerson.loggedInDevice = null;
+            await partner.save();
+        }
+
+        const payload = {
+            phone: phone,
+            role: pickUpPerson.role,
+            id: pickUpPerson._id
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(payload, secretKey);
+
+        // Store device identifier in pickUpPerson document
+        pickUpPerson.loggedInDevice = req.headers['user-agent']; // Using user-agent as device identifier
+        await partner.save();
+
+        res.json({ token });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server Error' });
+    }
+});
+
+
 module.exports = router;

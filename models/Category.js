@@ -6,10 +6,10 @@ const categorySchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  // categoryImage: {
-  //   type: String,
-  //   required: true,
-  // },
+  categoryImage: {
+    type: String,
+    required: true,
+  },
   slug: {
     type: String,
     required: true,
@@ -19,6 +19,8 @@ const categorySchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     required: true,
   }
+}, {
+  timestamps: true
 });
 
 const Category = mongoose.model('Category', categorySchema);

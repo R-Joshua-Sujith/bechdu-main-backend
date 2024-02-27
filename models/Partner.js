@@ -4,7 +4,8 @@ const mongoose = require("mongoose");
 const pickUpSchema = new mongoose.Schema({
     phone: { type: String },
     name: { type: String },
-    role: { type: String }
+    role: { type: String },
+    loggedInDevice: { type: String }
 })
 
 const PartnerSchema = new mongoose.Schema({
@@ -15,7 +16,8 @@ const PartnerSchema = new mongoose.Schema({
     pinCodes: [{ type: String }],
     role: { type: String },
     pickUpPersons: [pickUpSchema],
-    coins: { type: String }
+    coins: { type: String },
+    loggedInDevice: { type: String }
 })
 
 const PartnerModel = mongoose.model("Partner", PartnerSchema);

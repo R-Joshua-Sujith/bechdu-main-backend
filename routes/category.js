@@ -75,7 +75,7 @@ router.post('/create', verify, async (req, res) => {
 router.get("/get-all-category-types", async (req, res) => {
   try {
     // Fetch all categories from the database and select only the category_type field
-    const allCategoryTypes = await Category.find().select('_id category_type');
+    const allCategoryTypes = await Category.find().select('_id category_type ');
     // Extract the category_type values from the array of documents
     // Respond with the array of category_type values
     res.status(200).json(allCategoryTypes);
@@ -90,7 +90,7 @@ router.put('/edit-category/:categoryId', verify, async (req, res) => {
   if (req.user.role === "superadmin") {
     try {
       const categoryId = req.params.categoryId;
-      const { category_type, sections, slug } = req.body;
+      const { category_type, sections, slug, categoryImage } = req.body;
 
       // Convert the name and slug to lowercase for case-insensitive comparison
       const lowercasedName = category_type.toLowerCase();
@@ -106,6 +106,7 @@ router.put('/edit-category/:categoryId', verify, async (req, res) => {
         category_type: lowercasedName,
         slug,
         sections,
+        categoryImage
       }, { new: true });
 
       // Check if the category with the given ID exists
@@ -246,8 +247,8 @@ router.get('/get-all-categories', async (req, res) => {
     }
 
     const allCategories = await Category.find(query)
-      .select('category_type slug sections') // Include the 'sections' field in the selection
-      .sort({ createdAt: -1 })
+      .select('category_type slug sections categoryImage') // Include the 'sections' field in the selection
+      .sort({ updatedAt: -1 })
       .skip(skip)
       .limit(parseInt(pageSize));
 
@@ -259,6 +260,7 @@ router.get('/get-all-categories', async (req, res) => {
       category_type: category.category_type,
       slug: category.slug,
       sectionCount: category.sections ? category.sections.length : 0,
+      categoryImage: category.categoryImage
     }));
 
     res.status(200).json({

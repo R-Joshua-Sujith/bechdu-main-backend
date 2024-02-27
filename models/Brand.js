@@ -7,6 +7,8 @@ const BrandSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.Mixed,
         required: true,
     }
+}, {
+    timestamps: true
 });
 
 const BrandModel = mongoose.model('Brand', BrandSchema);

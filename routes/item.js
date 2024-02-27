@@ -25,7 +25,7 @@ router.post('/create-productss', upload2.single('productImage'), async (req, res
     try {
         const { basePrice, variant, brandName, seriesName, categoryType, model, dynamicFields, bestSelling, estimatedPrice, slug } = req.body;
         const dynamicFieldsArray = JSON.parse(dynamicFields);
-        
+
         const productImage = req.file.originalname;
         const existingProduct = await ProductModel.findOne({ slug });
         if (existingProduct) {
@@ -125,6 +125,26 @@ router.get('/get-products/:categoryType/:brandName', async (req, res) => {
     }
 });
 
+// router.get('/best-selling-products/:categoryType', async (req, res) => {
+//     try {
+//         const { categoryType } = req.params;
+
+//         if (!categoryType) {
+//             return res.status(400).json({ error: 'Category Type is required' });
+//         }
+
+//         // Find the top 5 products with the highest basePrice
+//         const products = await ProductModel.find({ categoryType, bestSelling: "true" })
+//             .sort({ basePrice: -1 }); // Sort in descending order of basePrice
+//         // .limit(5); // Limit the results to 5
+
+//         res.json(products);
+//     } catch (error) {
+//         res.status(500).json({ error: 'Internal Server error' });
+//     }
+// });
+
+
 router.get('/best-selling-products/:categoryType', async (req, res) => {
     try {
         const { categoryType } = req.params;
@@ -132,18 +152,18 @@ router.get('/best-selling-products/:categoryType', async (req, res) => {
         if (!categoryType) {
             return res.status(400).json({ error: 'Category Type is required' });
         }
+        const category = await CategoryModel.findOne({ category_type: categoryType }, 'slug');
 
         // Find the top 5 products with the highest basePrice
         const products = await ProductModel.find({ categoryType, bestSelling: "true" })
-            .sort({ basePrice: -1 }); // Sort in descending order of basePrice
-        // .limit(5); // Limit the results to 5
+            .sort({ basePrice: -1 })
 
-        res.json(products);
+
+        res.json({ products, category });
     } catch (error) {
         res.status(500).json({ error: 'Internal Server error' });
     }
 });
-
 
 router.get('/get-all-products', async (req, res) => {
     try {
