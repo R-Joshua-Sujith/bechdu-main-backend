@@ -422,23 +422,28 @@ router.get('/get-user-info-id/:id', async (req, res) => {
     }
 })
 
-router.post("/save-user/:phone", async (req, res) => {
-    try {
-        const { phone } = req.params;
-        const { name, email, addPhone } = req.body;
-        const user = await UserModel.findOne({ phone });
-        if (!user) {
-            return res.status(404).json({ error: "User not found" })
-        }
-        user.name = name;
-        user.email = email;
-        user.addPhone = addPhone;
+router.post("/save-user/:phone", verify, async (req, res) => {
+    if (req.user.phone === req.params.phone) {
+        try {
+            const { phone } = req.params;
+            const { name, email, addPhone } = req.body;
+            const user = await UserModel.findOne({ phone });
+            if (!user) {
+                return res.status(404).json({ error: "User not found" })
+            }
+            user.name = name;
+            user.email = email;
+            user.addPhone = addPhone;
 
-        await user.save();
-        res.status(200).json({ message: "Data saved successfully", user });
-    } catch (error) {
-        res.status(500).json({ error: "Server Error" })
+            await user.save();
+            res.status(200).json({ message: "Data saved successfully", user });
+        } catch (error) {
+            res.status(500).json({ error: "Server Error" })
+        }
+    } else {
+        return res.status(403).json({ error: "No Access to perform this  action" });
     }
+
 })
 
 
