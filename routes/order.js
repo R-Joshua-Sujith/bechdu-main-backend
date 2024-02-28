@@ -235,6 +235,34 @@ router.put('/:orderId/cancel', async (req, res) => {
     }
 });
 
+router.put('/:orderId/user-cancel', verify, async (req, res) => {
+    const { orderId } = req.params;
+    const { cancellationReason } = req.body;
+    if (req.user.phone === req.body.phone) {
+        try {
+            const order = await OrderModel.findById(orderId);
+
+            if (!order) {
+                return res.status(404).json({ error: 'Order not found' });
+            }
+
+            // Update the order status to 'cancel' and store the cancellation reason
+            order.status = 'cancelled';
+            order.cancellationReason = cancellationReason;
+
+            await order.save();
+
+            return res.status(200).json({ message: 'Order canceled successfully' });
+        } catch (error) {
+            console.error(error);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+    } else {
+        res.status(403).json({ error: "No Access to perform this action" })
+    }
+
+});
+
 router.put('/:orderId/complete', async (req, res) => {
     const { orderId } = req.params;
     const { deviceInfo } = req.body;
