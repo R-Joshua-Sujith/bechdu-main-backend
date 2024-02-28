@@ -18,6 +18,23 @@ router.get('/getHomePage', async (req, res) => {
     }
 });
 
+router.get('/mobile/getHomePage', async (req, res) => {
+    try {
+        const pageName = "Home Page"; // Name of the page you want to fetch
+        const pageData = await DynamicModel.findOne({ page: pageName });
+
+        if (!pageData) {
+            return res.status(404).json({ message: 'Page not found' });
+        }
+
+        const dynamicSections = pageData.dynamic
+        res.json(dynamicSections);
+    } catch (error) {
+        console.error('Error fetching page data:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
 router.put('/editHomePage', async (req, res) => {
     try {
         const pageName = "Home Page"; // Name of the page you want to edit

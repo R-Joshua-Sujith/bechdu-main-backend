@@ -45,7 +45,13 @@ const orderSchema = new mongoose.Schema({
         ]
     },
     status: { type: String, default: 'new' },
-    cancellationReason: { type: String, default: "" }
+    cancellationReason: { type: String, default: "" },
+    partner: {
+        partnerName: { type: String, default: "" },
+        partnerPhone: { type: String, default: "" },
+        pickUpPersonName: { type: String, default: "" },
+        pickUpPersonPhone: { type: String, default: "" }
+    }
 }, {
     timestamps: true
 })

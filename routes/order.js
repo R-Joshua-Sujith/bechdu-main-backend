@@ -77,8 +77,7 @@ router.post('/create-order', verify, async (req, res) => {
             existingUser.name = user.name;
             existingUser.addPhone = user.addPhone;
             existingUser.email = user.email;
-            existingUser.city = user.city;
-            existingUser.pincode = user.pincode;
+
 
             const useraddress = user.address;
             const pincodeRegex = /\b\d{6}\b(?=\D*$)/;
@@ -115,7 +114,6 @@ router.post('/create-order', verify, async (req, res) => {
             res.status(500).json({ error: 'Internal Server Error' });
         }
     } else {
-        console.log(error)
         res.status(403).json({ error: "No Access to perform this action" })
     }
 

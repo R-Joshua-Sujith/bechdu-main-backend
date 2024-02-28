@@ -328,7 +328,7 @@ router.get('/partners/order/:orderId', async (req, res) => {
         const orderId = req.params.orderId;
 
         // Fetch order details to get the orderpincode
-        const order = await OrderModel.findOne({ _id: orderId });
+        const order = await OrderModel.findOne({ "orderId": orderId });
         if (!order) {
             return res.status(404).json({ error: 'Order not found' });
         }
@@ -338,11 +338,69 @@ router.get('/partners/order/:orderId', async (req, res) => {
         // Fetch partners whose pinCodes include the orderpincode
         const matchingPartners = await PartnerModel.find({ pinCodes: orderpincode });
 
-        res.status(200).json(matchingPartners);
+        res.status(200).json({ partners: matchingPartners, order });
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+router.put('/order/assign/partner/:orderId', async (req, res) => {
+    try {
+        const orderId = req.params.orderId;
+        const { partnerName, partnerPhone } = req.body;
+
+        const existingOrder = await OrderModel.findOne({ orderId });
+
+        if (existingOrder.partner.partnerName !== '' || existingOrder.partner.partnerPhone !== '') {
+            return res.status(400).json({ error: 'Partner already assigned for this order' });
+        }
+
+
+        // Update partner details in the order
+        const updatedOrder = await OrderModel.findOneAndUpdate(
+            { orderId },
+            { $set: { 'partner.partnerName': partnerName, 'partner.partnerPhone': partnerPhone, status: 'processing' } },
+            { new: true }
+        );
+
+        if (!updatedOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        res.status(200).json(updatedOrder);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+router.put('/order/cancel/partner/:orderId', async (req, res) => {
+    try {
+        const orderId = req.params.orderId;
+
+
+        const existingOrder = await OrderModel.findOne({ orderId });
+
+
+
+        // Update partner details in the order
+        const updatedOrder = await OrderModel.findOneAndUpdate(
+            { orderId },
+            { $set: { 'partner.partnerName': "", 'partner.partnerPhone': "", status: "new" } },
+            { new: true }
+        );
+
+        if (!updatedOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        res.status(200).json(updatedOrder);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
 
 module.exports = router;
