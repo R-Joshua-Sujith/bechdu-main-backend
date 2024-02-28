@@ -61,6 +61,7 @@ const verify = (req, res, next) => {
 
 
 router.post('/create-order', verify, async (req, res) => {
+    console.log(req.body)
     if (req.user.phone === req.body.user.phone) {
         try {
             const {
@@ -114,6 +115,7 @@ router.post('/create-order', verify, async (req, res) => {
             res.status(500).json({ error: 'Internal Server Error' });
         }
     } else {
+        console.log(error)
         res.status(403).json({ error: "No Access to perform this action" })
     }
 
