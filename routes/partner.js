@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const mongoose = require("mongoose");
 const PartnerModel = require("../models/Partner");
+const OrderModel = require("../models/Order")
 const dotenv = require("dotenv");
 const axios = require("axios");
 const jwt = require("jsonwebtoken");
@@ -321,5 +322,27 @@ router.post('/login/pickup', async (req, res) => {
     }
 });
 
+
+router.get('/partners/order/:orderId', async (req, res) => {
+    try {
+        const orderId = req.params.orderId;
+
+        // Fetch order details to get the orderpincode
+        const order = await OrderModel.findOne({ _id: orderId });
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const orderpincode = order.user.orderpincode;
+
+        // Fetch partners whose pinCodes include the orderpincode
+        const matchingPartners = await PartnerModel.find({ pinCodes: orderpincode });
+
+        res.status(200).json(matchingPartners);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
 
 module.exports = router;

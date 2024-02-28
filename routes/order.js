@@ -70,7 +70,7 @@ router.post('/create-order', verify, async (req, res) => {
                 productDetails,
                 promo
             } = req.body;
-
+            console.log(req.body);
             const orderID = await generateCustomID();
             const existingUser = await UserModel.findOne({ phone: user.phone })
             existingUser.name = user.name;
@@ -78,6 +78,12 @@ router.post('/create-order', verify, async (req, res) => {
             existingUser.email = user.email;
             existingUser.city = user.city;
             existingUser.pincode = user.pincode;
+
+            const useraddress = user.address;
+            const pincodeRegex = /\b\d{6}\b(?=\D*$)/;
+            const pincodeMatch = useraddress.match(pincodeRegex);
+            const orderPincode = pincodeMatch ? pincodeMatch[0] : '';
+            user.orderpincode = orderPincode;
 
             if (promo.code) {
                 // Push the promo code into the promoCodes array in UserModel

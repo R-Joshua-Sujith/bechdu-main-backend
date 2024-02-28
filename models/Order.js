@@ -9,7 +9,8 @@ const orderSchema = new mongoose.Schema({
         addPhone: { type: String, default: "" },
         address: { type: String },
         pincode: { type: String },
-        city: { type: String }
+        city: { type: String },
+        orderpincode: { type: String },
     },
     payment: {
         type: { type: String },
