@@ -268,32 +268,45 @@ const sendSMS = async (mobileNumber) => {
                 ]
             }
             , { headers })
-
-
-        return { otp, otpExpiry };
+        console.log(response.data);
+        // Check if the response indicates success
+        if (response.status === 200 && response.data && response.data.type === "success") {
+            return { otp, otpExpiry };
+        } else {
+            // Handle error or failure to send OTP
+            throw new Error("Failed to send OTP");
+        }
     } catch (error) {
         console.error(error);
         throw error;
     }
 };
 
+
 router.post('/send-sms', async (req, res) => {
     const { mobileNumber } = req.body;
     const formattedMobileNumber = `91${mobileNumber}`;
     try {
-        const { otp, otpExpiry } = await sendSMS(formattedMobileNumber);
-        let user = await UserModel.findOne({ phone: mobileNumber });
-        if (!user) {
-            user = new UserModel({ phone: mobileNumber })
+        const result = await sendSMS(formattedMobileNumber);
+        if (result && result.otp && result.otpExpiry) {
+            const { otp, otpExpiry } = result;
+            let user = await UserModel.findOne({ phone: mobileNumber });
+            if (!user) {
+                user = new UserModel({ phone: mobileNumber })
+            }
+            user.otp = otp;
+            user.otpExpiry = otpExpiry;
+            await user.save();
+            res.json({ message: "OTP Sent Successfully" });
+        } else {
+            res.status(500).json({ error: 'Failed to send OTP' });
         }
-        user.otp = otp;
-        user.otpExpiry = otpExpiry;
-        await user.save();
-        res.json({ message: "OTP Sent Successfully" });
     } catch (error) {
-        res.status(500).json({ error: 'Internal Server Error' });
+        console.error(error);
+        res.status(500).json({ error: 'Failed to send OTP' });
     }
 });
+
 
 router.post('/sms-login', async (req, res) => {
     const { otp, phone } = req.body;
