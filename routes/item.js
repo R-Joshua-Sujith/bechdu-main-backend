@@ -195,6 +195,34 @@ router.get('/get-all-products', async (req, res) => {
     }
 });
 
+router.get('/global-search', async (req, res) => {
+    try {
+        const { search = '' } = req.query;
+
+        // Use a regular expression to make the search case-insensitive and partial
+        const searchRegex = new RegExp(search, 'i');
+
+        const query = {
+            $or: [
+                { brandName: searchRegex },
+                { seriesName: searchRegex },
+                { model: searchRegex },
+                { variant: searchRegex },
+                { bestSelling: searchRegex }
+            ],
+        };
+
+        const allProducts = await ProductModel.find(query);
+        const totalProducts = allProducts.length; // Total count without pagination
+
+        res.json({
+            totalRows: totalProducts,
+            data: allProducts,
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 
 router.get('/products/:productId', async (req, res) => {

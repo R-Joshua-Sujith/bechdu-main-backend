@@ -345,6 +345,32 @@ router.get('/partners/order/:orderId', async (req, res) => {
     }
 });
 
+router.get('/get-partner-orders/:partnerPhone', async (req, res) => {
+    try {
+        const partnerPhone = req.params.partnerPhone;
+
+        // Fetch partner based on phone number
+        const partner = await PartnerModel.findOne({ phone: partnerPhone });
+        if (!partner) {
+            return res.status(404).json({ error: 'Partner not found' });
+        }
+
+        // Fetch orders whose pincode matches any of the partner's pinCodes
+        // and partner.partnerName and partner.phone are empty strings
+        const matchingOrders = await OrderModel.find({
+            'user.orderpincode': { $in: partner.pinCodes },
+            'partner.partnerName': '',
+            'partner.partnerPhone': ''
+        });
+
+        res.status(200).json({ orders: matchingOrders, partner });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+
 router.put('/order/assign/partner/:orderId', async (req, res) => {
     try {
         const orderId = req.params.orderId;
