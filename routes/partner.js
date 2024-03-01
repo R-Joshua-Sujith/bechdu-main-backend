@@ -462,6 +462,33 @@ router.post('/send-sms', async (req, res) => {
     }
 });
 
+router.post(`/sms-login`, async (req, res) => {
+    try {
+        const { otp, phone } = req.body;
+        const partner = await PartnerModel.findOne({ phone, otp, otpExpiry: { $gt: Date.now() } });
+        if (!partner) {
+            return res.status(400).json({ error: "Invalid OTP" });
+        }
+        partner.otp = ""
+        partner.otpExpiry = ""
+        partner.loggedInDevice = req.headers['user-agent'];
+        const payload = {
+            loggedInDevice: req.headers['user-agent'],
+            phone: phone,
+            role: partner.role,
+            id: partner._id,
+        }
+        const token = jwt.sign(payload, secretKey);
+        await partner.save();
+        res.status(200).json({
+            phone: phone,
+            token: token,
+            message: "Login successful"
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Server Error" })
+    }
+})
 
 
 module.exports = router;

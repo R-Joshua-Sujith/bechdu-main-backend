@@ -132,6 +132,23 @@ router.get('/get-user-orders/:phone', async (req, res) => {
     }
 })
 
+router.get('/get-user-order/:phone', verify, async (req, res) => {
+    if (req.user.phone === req.params.phone) {
+        try {
+            const { phone } = req.params;
+            const orders = await OrderModel.find({ 'user.phone': phone }).select('-deviceInfo').sort({ createdAt: -1 });
+            if (!orders || orders.length === 0) {
+                return res.status(404).json({ error: "No Orders Found" })
+            }
+            res.status(200).json({ orders })
+        } catch (error) {
+            res.status(500).json({ error: "Server Error" })
+        }
+    } else {
+        res.status(403).json({ error: "No Access to perform this action" })
+    }
+})
+
 
 router.get('/get-all-orders', async (req, res) => {
     try {
