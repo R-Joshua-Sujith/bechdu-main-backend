@@ -309,32 +309,65 @@ router.post('/send-sms', async (req, res) => {
 
 
 router.post('/sms-login', async (req, res) => {
-    const { otp, phone } = req.body;
-
-    // Find user by reset token, OTP, and email
-    const user = await UserModel.findOne({
-        phone,
-        otp,
-        otpExpiry: { $gt: Date.now() },
-    });
-
-    if (!user) {
-        return res.status(400).json({ message: 'Invalid OTP or Phone' });
-    }
-
-    // Clear OTP and OTP expiry after successful reset
-    user.otp = undefined;
-    user.otpExpiry = undefined;
-
     try {
-        await user.save();
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({ error: 'Server Error' });
-    }
+        const { otp, phone } = req.body;
 
-    res.json({ user });
+        // Find user by reset token, OTP, and email
+        const user = await UserModel.findOne({
+            phone,
+            otp,
+            otpExpiry: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid OTP or Phone' });
+        }
+
+        const payload = {
+            phone: phone,
+        }
+
+        const token = jwt.sign(payload, secretKey);
+
+        user.otp = "";
+        user.otpExpiry = "";
+
+        await user.save();
+        return res.status(201).json({ user, token })
+    } catch (error) {
+        res.status(500).json({ error: "Server Error" })
+    }
 });
+
+// router.post('/sms-login', async (req, res) => {
+//     try {
+//         const { phone } = req.body;
+
+//         // Check if the user with the provided phone number exists
+//         let user = await UserModel.findOne({ phone });
+//         const payload = {
+//             phone: phone,
+//         }
+
+//         const token = jwt.sign(payload, secretKey);
+
+//         if (user) {
+//             // If user exists, send a success response with the user details
+//             return res.status(200).json({ user, token });
+//         } else {
+//             // If user doesn't exist, create a new user with the provided phone number
+//             user = new UserModel({ phone });
+//             await user.save();
+
+//             // Send a success response with the newly created user details
+//             return res.status(201).json({ user, token });
+//         }
+//     } catch (error) {
+//         // If any error occurs, send an error response
+//         console.error('Error in user login:', error);
+//         res.status(500).json({ message: 'Internal server error' });
+//     }
+// });
 
 router.post('/users/add-address', verify, async (req, res) => {
     if (req.user.phone === req.body.phone) {

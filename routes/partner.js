@@ -403,4 +403,65 @@ router.put('/order/cancel/partner/:orderId', async (req, res) => {
 });
 
 
+const sendSMS = async (mobileNumber) => {
+    try {
+        const otp = Math.floor(1000 + Math.random() * 9000);
+        const otpExpiry = Date.now() + 600000;
+        const apiUrl = 'https://control.msg91.com/api/v5/flow/';
+        const headers = {
+            "authkey": "413319Apv4eIy5qvDs659e4869P1"
+        }
+        const response = await axios.post(apiUrl,
+            {
+                "template_id": "659cb356d6fc05410c2c0a62",
+                "short_url": "0",
+                "recipients": [
+                    {
+                        "mobiles": mobileNumber,
+                        "var": otp
+                    }
+                ]
+            }
+            , { headers })
+        console.log(response.data);
+        // Check if the response indicates success
+        if (response.status === 200 && response.data && response.data.type === "success") {
+            return { otp, otpExpiry };
+        } else {
+            // Handle error or failure to send OTP
+            throw new Error("Failed to send OTP");
+        }
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+};
+
+router.post('/send-sms', async (req, res) => {
+    const { mobileNumber } = req.body;
+    const formattedMobileNumber = `91${mobileNumber}`;
+    try {
+        let user = await PartnerModel.findOne({ phone: mobileNumber });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const result = await sendSMS(formattedMobileNumber);
+        if (result && result.otp && result.otpExpiry) {
+            const { otp, otpExpiry } = result;
+            user.otp = otp;
+            user.otpExpiry = otpExpiry;
+            await user.save();
+            res.json({ message: "OTP Sent Successfully" });
+        } else {
+            res.status(500).json({ error: 'Failed to send OTP' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to send OTP' });
+    }
+});
+
+
+
 module.exports = router;

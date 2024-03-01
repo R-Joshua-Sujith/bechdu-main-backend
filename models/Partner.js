@@ -17,7 +17,9 @@ const PartnerSchema = new mongoose.Schema({
     role: { type: String },
     pickUpPersons: [pickUpSchema],
     coins: { type: String },
-    loggedInDevice: { type: String }
+    loggedInDevice: { type: String },
+    otp: String,
+    otpExpiry: Date,
 })
 
 const PartnerModel = mongoose.model("Partner", PartnerSchema);
