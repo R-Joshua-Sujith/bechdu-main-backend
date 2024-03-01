@@ -481,6 +481,7 @@ router.post(`/sms-login`, async (req, res) => {
         const token = jwt.sign(payload, secretKey);
         await partner.save();
         res.status(200).json({
+            role: partner.role,
             phone: phone,
             token: token,
             message: "Login successful"

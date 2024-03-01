@@ -8,6 +8,9 @@ const DynamicSchema = new mongoose.Schema({
     dynamic: {
         type: mongoose.Schema.Types.Mixed,
         required: true,
+    },
+    coinValue: {
+        type: String
     }
 });
 

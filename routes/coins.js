@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const CoinsModel = require('../models/Coins');
+const DynamicModel = require('../models/Dynamic')
 
 // Create a new coin
 router.post('/create-coins', async (req, res) => {
@@ -129,6 +130,45 @@ router.get('/get-all-coins', async (req, res) => {
     }
 });
 
+
+router.get("/get-coin-value", async (req, res) => {
+    try {
+        // Find the document with coinValue
+        const coin = await DynamicModel.findOne({ page: "Coin Page" });
+
+        if (!coin) {
+            return res.status(404).json({ error: 'Not Found' });
+        }
+
+
+        res.status(200).json({ coinValue: coin.coinValue });
+    } catch (error) {
+        console.error("Error fetching coin value:", error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+router.put("/update-coin-value", async (req, res) => {
+    const { coinValue } = req.body;
+    try {
+        // Find the document with coinValue
+        let coin = await DynamicModel.findOne({ page: "Coin Page" });
+        if (!coin) {
+            return res.status(404).json({ error: 'Coin not found' });
+        }
+
+        // Update the coinValue
+        coin.coinValue = coinValue;
+
+        // Save the updated dynamic model
+        await coin.save();
+
+        res.json({ message: 'Coin value updated successfully', coin });
+    } catch (error) {
+        console.error("Error updating coin value:", error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 
 module.exports = router;
