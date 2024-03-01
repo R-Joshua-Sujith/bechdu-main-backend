@@ -51,7 +51,8 @@ const orderSchema = new mongoose.Schema({
         partnerPhone: { type: String, default: "" },
         pickUpPersonName: { type: String, default: "" },
         pickUpPersonPhone: { type: String, default: "" }
-    }
+    },
+    coins: { type: String }
 }, {
     timestamps: true
 })

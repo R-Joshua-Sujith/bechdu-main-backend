@@ -8,6 +8,7 @@ const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
+const CoinsModel = require('../models/Coins');
 
 dotenv.config();
 const secretKey = process.env.JWT_SECRET_KEY
@@ -91,6 +92,19 @@ router.post('/create-order', verify, async (req, res) => {
             }
             await existingUser.save();
 
+            let coins = 0;
+            const productPrice = productDetails.price;
+
+            // Find the appropriate document in the coinModel
+            const coinModel = await CoinsModel.findOne({
+                startRange: { $lte: productPrice },
+                endRange: { $gte: productPrice }
+            });
+
+            if (coinModel) {
+                coins = coinModel.coins;
+            }
+
             // Create a new order instance using the OrderModel
             const newOrder = new OrderModel({
                 orderId: orderID,
@@ -98,7 +112,8 @@ router.post('/create-order', verify, async (req, res) => {
                 payment,
                 pickUpDetails,
                 productDetails,
-                promo
+                promo,
+                coins
             });
 
             // Save the new order to the database

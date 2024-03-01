@@ -163,7 +163,7 @@ router.put("/update-coin-value", async (req, res) => {
         // Save the updated dynamic model
         await coin.save();
 
-        res.json({ message: 'Coin value updated successfully', coin });
+        res.json({ message: 'Coin value updated successfully' });
     } catch (error) {
         console.error("Error updating coin value:", error);
         res.status(500).json({ error: 'Server error' });
