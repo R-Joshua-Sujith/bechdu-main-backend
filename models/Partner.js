@@ -5,7 +5,8 @@ const pickUpSchema = new mongoose.Schema({
     phone: { type: String },
     name: { type: String },
     role: { type: String },
-    loggedInDevice: { type: String }
+    loggedInDevice: { type: String },
+    status: { type: String, default: "active" },
 })
 
 const PartnerSchema = new mongoose.Schema({
@@ -20,6 +21,7 @@ const PartnerSchema = new mongoose.Schema({
     loggedInDevice: { type: String },
     otp: String,
     otpExpiry: Date,
+    status: { type: String, default: "active" },
 })
 
 const PartnerModel = mongoose.model("Partner", PartnerSchema);
