@@ -669,7 +669,7 @@ router.get('/get-pickup-persons/:partnerPhone', verify, async (req, res) => {
 
 router.put('/block-pickup-person/:partnerPhone/:pickUpPersonId', verify, async (req, res) => {
     const partnerPhone = req.params.partnerPhone;
-
+    const pickUpPersonId = req.params.pickUpPersonId;
 
     try {
         // Find the partner by phone number
@@ -693,6 +693,41 @@ router.put('/block-pickup-person/:partnerPhone/:pickUpPersonId', verify, async (
             await partner.save();
 
             res.status(200).json({ message: "Pick-up person blocked successfully" });
+        } else {
+            res.status(403).json({ error: "No access to perform this action" });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+router.put('/unblock-pickup-person/:partnerPhone/:pickUpPersonId', verify, async (req, res) => {
+    const partnerPhone = req.params.partnerPhone;
+    const pickUpPersonId = req.params.pickUpPersonId;
+
+    try {
+        // Find the partner by phone number
+        const partner = await PartnerModel.findOne({ phone: partnerPhone });
+        if (!partner) {
+            return res.status(404).json({ error: "Partner not found" });
+        }
+
+        // Check if the user has access
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+            // Find the pick-up person by ID
+            const pickUpPerson = partner.pickUpPersons.find(person => person._id.toString() === pickUpPersonId);
+            if (!pickUpPerson) {
+                return res.status(404).json({ error: "Pick-up person not found" });
+            }
+
+            // Update the status of the pick-up person to "blocked"
+            pickUpPerson.status = "active";
+
+            // Save the updated partner document
+            await partner.save();
+
+            res.status(200).json({ message: "Pick-up person unblocked successfully" });
         } else {
             res.status(403).json({ error: "No access to perform this action" });
         }
