@@ -345,30 +345,7 @@ router.get('/partners/order/:orderId', async (req, res) => {
     }
 });
 
-router.get('/get-partner-orders/:partnerPhone', async (req, res) => {
-    try {
-        const partnerPhone = req.params.partnerPhone;
 
-        // Fetch partner based on phone number
-        const partner = await PartnerModel.findOne({ phone: partnerPhone });
-        if (!partner) {
-            return res.status(404).json({ error: 'Partner not found' });
-        }
-
-        // Fetch orders whose pincode matches any of the partner's pinCodes
-        // and partner.partnerName and partner.phone are empty strings
-        const matchingOrders = await OrderModel.find({
-            'user.orderpincode': { $in: partner.pinCodes },
-            'partner.partnerName': '',
-            'partner.partnerPhone': ''
-        });
-
-        res.status(200).json({ orders: matchingOrders, partner });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
-});
 
 
 router.put('/order/assign/partner/:orderId', async (req, res) => {
@@ -513,9 +490,152 @@ router.post(`/sms-login`, async (req, res) => {
             message: "Login successful"
         });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ error: "Server Error" })
     }
 })
+
+
+router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
+    try {
+        const partnerPhone = req.params.partnerPhone;
+
+        // Fetch partner based on phone number
+        const partner = await PartnerModel.findOne({ phone: partnerPhone });
+        if (!partner) {
+            return res.status(404).json({ error: 'Partner not found' });
+        }
+
+        // Check if loggedInDevice matches
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+            // Fetch orders whose pincode matches any of the partner's pinCodes
+            // and partner.partnerName and partner.phone are empty strings
+            const matchingOrders = await OrderModel.find({
+                'user.orderpincode': { $in: partner.pinCodes },
+                'partner.partnerName': '',
+                'partner.partnerPhone': ''
+            }).sort({ createdAt: -1 });
+
+            res.status(200).json({ orders: matchingOrders });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ${req.user.loggedInDevice} ${partner.loggedInDevice}` });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+
+});
+
+router.get('/get-assigned-partner-orders/:partnerPhone', verify, async (req, res) => {
+    try {
+        const partnerPhone = req.params.partnerPhone;
+
+        // Fetch partner based on phone number
+        const partner = await PartnerModel.findOne({ phone: partnerPhone });
+        if (!partner) {
+            return res.status(404).json({ error: 'Partner not found' });
+        }
+
+        // Check if loggedInDevice matches
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+            // Fetch orders whose pincode matches any of the partner's pinCodes
+            // and partner.partnerName and partner.partnerPhone are empty strings
+            const matchingOrders = await OrderModel.find({
+                'user.orderpincode': { $in: partner.pinCodes },
+                $and: [
+                    { 'partner.partnerPhone': partnerPhone }
+                ]
+            }).sort({ createdAt: -1 });
+
+            res.status(200).json({ orders: matchingOrders });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ${req.user.loggedInDevice} ${partner.loggedInDevice}` });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+
+});
+
+router.post("/accept-order/:partnerPhone/:orderId", verify, async (req, res) => {
+    try {
+        const partnerPhone = req.params.partnerPhone;
+
+        // Fetch partner based on phone number
+        const partner = await PartnerModel.findOne({ phone: partnerPhone });
+        if (!partner) {
+            return res.status(404).json({ error: 'Partner not found' });
+        }
+        const orderId = req.params.orderId;
+
+        // Fetch the order by ID
+        const order = await OrderModel.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        // Check if loggedInDevice matches
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+            if (order.partner.partnerName !== '' && order.partner.partnerPhone !== '') {
+                return res.status(400).json({ error: 'Order already accepted by a partner' });
+            }
+            order.partner.partnerName = partner.name
+            order.partner.partnerPhone = partnerPhone;
+
+            const coinsToDeduct = parseInt(order.coins);
+            const partnerCoins = parseInt(partner.coins);
+            if (partnerCoins < coinsToDeduct) {
+                return res.status(400).json({ error: 'Insufficient balance' });
+            }
+
+            partner.coins = (partnerCoins - coinsToDeduct).toString();
+
+            order.partner.coins -= coinsToDeduct;
+            await order.save();
+            await partner.save();
+            res.status(200).json({ message: "Order Assigned Successfully" })
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ${req.user.loggedInDevice} ${partner.loggedInDevice}` });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+})
+
+
+router.post('/add-pickup-person/:partnerPhone', verify, async (req, res) => {
+    const partnerPhone = req.params.partnerPhone;
+    const { phone, name } = req.body;
+    const role = "pickUp";
+
+    try {
+        // Find the partner by ID
+        const partner = await PartnerModel.findOne({ phone: partnerPhone });
+        if (!partner) {
+            return res.status(404).json({ error: "Partner not found" });
+        }
+
+        // Check if the phone number already exists in either PartnerModel or pickUpPersons
+        const phoneExists = await PartnerModel.exists({ $or: [{ phone }, { 'pickUpPersons.phone': phone }] });
+        if (phoneExists) {
+            return res.status(400).json({ error: "Phone number already exists" });
+        }
+
+        // Add the pick-up person to the partner's pickUpPersons array
+        partner.pickUpPersons.push({ phone, name, role });
+
+        // Save the updated partner document
+        await partner.save();
+
+        res.status(200).json({ message: "Pick-up person added successfully", partner });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
 
 
 module.exports = router;
