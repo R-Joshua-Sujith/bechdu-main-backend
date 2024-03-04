@@ -581,14 +581,16 @@ router.post("/accept-order/:partnerPhone/:orderId", verify, async (req, res) => 
             if (order.partner.partnerName !== '' && order.partner.partnerPhone !== '') {
                 return res.status(400).json({ error: 'Order already accepted by a partner' });
             }
-            order.partner.partnerName = partner.name
-            order.partner.partnerPhone = partnerPhone;
+
 
             const coinsToDeduct = parseInt(order.coins);
             const partnerCoins = parseInt(partner.coins);
             if (partnerCoins < coinsToDeduct) {
                 return res.status(400).json({ error: 'Insufficient balance' });
             }
+            order.partner.partnerName = partner.name
+            order.partner.partnerPhone = partnerPhone;
+            order.status = "processing";
 
             partner.coins = (partnerCoins - coinsToDeduct).toString();
 
@@ -781,6 +783,57 @@ router.post("/assign-order/:partnerPhone/:pickUpPersonId/:orderId", verify, asyn
     }
 })
 
+router.get("/partners/:phone", verify, async (req, res) => {
+    const phone = req.params.phone; // Extract the phone number from the request parameters
+    try {
+        const partner = await PartnerModel.findOne({ phone }); // Find the partner in the database by phone number
+        if (!partner) {
+            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
+        }
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            res.status(200).json(partner);
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+
+        // Respond with the partner data in JSON format
+    } catch (error) {
+        res.status(500).json({ message: error.message }); // Handle errors
+    }
+});
+
+router.put("/requote/partner/:phone/:orderId", verify, async (req, res) => {
+    const orderId = req.params.orderId;
+    const phone = req.params.phone;
+    const { price, options } = req.body;
+
+    try {
+        const partner = await PartnerModel.findOne({ phone });
+        if (!partner) {
+            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
+        }
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            const order = await OrderModel.findById(orderId);
+
+            if (!order) {
+                return res.status(404).json({ message: "Order not found" });
+            }
+
+            // Update product price and options
+            order.productDetails.price = price;
+            order.productDetails.options = options;
+
+            // Save updated order
+            await order.save();
+
+            res.status(200).json({ message: "Product price and options updated successfully" });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
 
 
 module.exports = router;
