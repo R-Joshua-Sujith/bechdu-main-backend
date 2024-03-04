@@ -513,7 +513,8 @@ router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
             const matchingOrders = await OrderModel.find({
                 'user.orderpincode': { $in: partner.pinCodes },
                 'partner.partnerName': '',
-                'partner.partnerPhone': ''
+                'partner.partnerPhone': '',
+                status: "new"
             }).sort({ createdAt: -1 });
 
             res.status(200).json({ orders: matchingOrders });
