@@ -183,7 +183,9 @@ router.get('/get-all-products', async (req, res) => {
             ],
         };
 
-        const allProducts = await ProductModel.find(query).skip(skip).limit(parseInt(pageSize));
+        const projection = { dynamicFields: 0 };
+
+        const allProducts = await ProductModel.find(query, projection).skip(skip).limit(parseInt(pageSize));
         const totalProducts = await ProductModel.countDocuments(query);
 
         res.json({
