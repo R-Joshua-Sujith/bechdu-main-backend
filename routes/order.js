@@ -9,6 +9,7 @@ const dotenv = require("dotenv");
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const CoinsModel = require('../models/Coins');
+const createInvoice = require("./createInvoice")
 
 dotenv.config();
 const secretKey = process.env.JWT_SECRET_KEY
@@ -318,6 +319,40 @@ router.put('/:orderId/complete', async (req, res) => {
     }
 })
 
+router.get('/generate-invoice/:phone/:orderID', verify, async (req, res) => {
+    if (req.user.phone === req.params.phone) {
+        try {
+
+            // Mocking order details for testing, replace this with your actual logic to fetch order details
+            const orderID = req.params.orderID;
+            const order = await OrderModel.findById(orderID);
+
+            if (!order) {
+                return res.status(404).send('Order not found');
+            }
+
+            // Create invoice data from the order details
+
+
+            // Create PDF invoice in memory
+            const pdfBuffer = await createInvoice(order);
+
+            // Set response headers
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
+
+            // Send the PDF buffer as response
+            res.send(pdfBuffer);
+
+        } catch (error) {
+            console.error('Error generating invoice:', error);
+            res.status(500).send({ error: "Internal server error" });
+        }
+    }
+    else {
+        res.status(403).json({ error: "No Access to perform this action" })
+    }
+});
 
 
 
