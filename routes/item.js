@@ -93,6 +93,10 @@ router.get('/get-products-slug/:categorySlug/:brandName', async (req, res) => {
 });
 
 
+
+
+
+
 router.get('/get-products/:categoryType/:brandName', async (req, res) => {
     try {
         const { categoryType, brandName } = req.params;
@@ -116,6 +120,38 @@ router.get('/get-products/:categoryType/:brandName', async (req, res) => {
 
 
         const products = await ProductModel.find({ categoryType, brandName });
+        res.status(200).json({
+            data: products
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Internal Server error' });
+        console.log(error)
+    }
+});
+
+router.get('/get-products/:categoryType/:brandName/:seriesName', async (req, res) => {
+    try {
+        const { categoryType, brandName, seriesName } = req.params;
+
+        if (!categoryType || !brandName) {
+            return res.status(400).json({ error: 'Both categoryType and brandName are required parameters' });
+        }
+
+        const category = await CategoryModel.findOne({ category_type: categoryType });
+
+        if (!category) {
+            return res.status(404).json({ error: 'Category not found' });
+        }
+
+        // Check if brandName exists in BrandModel
+        const brand = await BrandModel.findOne({ brandName });
+
+        if (!brand) {
+            return res.status(404).json({ error: 'Brand not found' });
+        }
+
+
+        const products = await ProductModel.find({ categoryType, brandName, seriesName });
         res.status(200).json({
             data: products
         });
