@@ -11,7 +11,10 @@ const DynamicSchema = new mongoose.Schema({
     },
     coinValue: {
         type: String
-    }
+    },
+    dates: [String],
+    time: [String]
+
 });
 
 const DynamicModel = mongoose.model("Dynamic", DynamicSchema);
