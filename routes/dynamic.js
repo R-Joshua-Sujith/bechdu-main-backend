@@ -121,7 +121,7 @@ router.get('/calendar/next-10-days', async (req, res) => {
         for (let i = 0; i < 10; i++) {
             const nextDay = new Date(today);
             nextDay.setDate(today.getDate() + i);
-            next10Days.push(nextDay.toISOString()); // Store in ISO 8601 format
+            next10Days.push(nextDay.toDateString()); // Store in ISO 8601 format
         }
 
         // Find page data
@@ -166,7 +166,7 @@ router.get('/calendar/next-10-days-web', async (req, res) => {
         for (let i = 0; i < 10; i++) {
             const nextDay = new Date(today);
             nextDay.setDate(today.getDate() + i);
-            next10Days.push(nextDay.toISOString()); // Store in ISO 8601 format
+            next10Days.push(nextDay.toDateString()); // Store in ISO 8601 format
         }
         console.log(next10Days)
 
