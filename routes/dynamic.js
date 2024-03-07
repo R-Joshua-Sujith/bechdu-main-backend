@@ -168,6 +168,7 @@ router.get('/calendar/next-10-days-web', async (req, res) => {
             nextDay.setDate(today.getDate() + i);
             next10Days.push(nextDay.toISOString()); // Store in ISO 8601 format
         }
+        console.log(next10Days)
 
         // Find page data
         const pageName = "Calendar"; // Name of the page
