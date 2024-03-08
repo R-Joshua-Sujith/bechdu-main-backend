@@ -203,6 +203,7 @@ router.get('/best-selling-products/:categoryType', async (req, res) => {
 
 router.get('/get-all-products', async (req, res) => {
     try {
+        const category = await CategoryModel.findOne({ category_type: "mobile" }, 'slug');
         const { page = 1, pageSize = 5, search = '' } = req.query;
         const skip = (page - 1) * pageSize;
 
@@ -227,6 +228,7 @@ router.get('/get-all-products', async (req, res) => {
         res.json({
             totalRows: totalProducts,
             data: allProducts,
+            category
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -235,6 +237,7 @@ router.get('/get-all-products', async (req, res) => {
 
 router.get('/global-search', async (req, res) => {
     try {
+
         const { search = '' } = req.query;
 
         // Use a regular expression to make the search case-insensitive and partial
@@ -256,6 +259,7 @@ router.get('/global-search', async (req, res) => {
         res.json({
             totalRows: totalProducts,
             data: allProducts,
+
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
