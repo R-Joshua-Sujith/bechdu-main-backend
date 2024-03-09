@@ -254,11 +254,11 @@ const sendSMS = async (mobileNumber) => {
         const otpExpiry = Date.now() + 600000;
         const apiUrl = 'https://control.msg91.com/api/v5/flow/';
         const headers = {
-            "authkey": "413319Apv4eIy5qvDs659e4869P1"
+            "authkey": "417853AcWT15I9Rx65eb3f2cP1"
         }
         const response = await axios.post(apiUrl,
             {
-                "template_id": "659cb356d6fc05410c2c0a62",
+                "template_id": "65eb261ed6fc053f156b2bd2",
                 "short_url": "0",
                 "recipients": [
                     {
