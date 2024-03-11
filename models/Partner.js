@@ -6,6 +6,8 @@ const pickUpSchema = new mongoose.Schema({
     name: { type: String },
     role: { type: String },
     loggedInDevice: { type: String },
+    otp: String,
+    otpExpiry: Date,
     status: { type: String, default: "active" },
 })
 

@@ -6,6 +6,8 @@ const jwt = require("jsonwebtoken");
 
 dotenv.config();
 const secretKey = process.env.JWT_SECRET_KEY
+const authkey = process.env.MSG91_AUTH_KEY
+const sendOTP_Template_id = process.env.MSG91_TEMPLATE_ID_SEND_OTP
 
 const verify = (req, res, next) => {
     const authHeader = req.headers.authorization;
@@ -254,11 +256,11 @@ const sendSMS = async (mobileNumber) => {
         const otpExpiry = Date.now() + 600000;
         const apiUrl = 'https://control.msg91.com/api/v5/flow/';
         const headers = {
-            "authkey": "417853AcWT15I9Rx65eb3f2cP1"
+            "authkey": authkey
         }
         const response = await axios.post(apiUrl,
             {
-                "template_id": "65eb261ed6fc053f156b2bd2",
+                "template_id": sendOTP_Template_id,
                 "short_url": "0",
                 "recipients": [
                     {
@@ -339,35 +341,7 @@ router.post('/sms-login', async (req, res) => {
     }
 });
 
-// router.post('/sms-login', async (req, res) => {
-//     try {
-//         const { phone } = req.body;
 
-//         // Check if the user with the provided phone number exists
-//         let user = await UserModel.findOne({ phone });
-//         const payload = {
-//             phone: phone,
-//         }
-
-//         const token = jwt.sign(payload, secretKey);
-
-//         if (user) {
-//             // If user exists, send a success response with the user details
-//             return res.status(200).json({ user, token });
-//         } else {
-//             // If user doesn't exist, create a new user with the provided phone number
-//             user = new UserModel({ phone });
-//             await user.save();
-
-//             // Send a success response with the newly created user details
-//             return res.status(201).json({ user, token });
-//         }
-//     } catch (error) {
-//         // If any error occurs, send an error response
-//         console.error('Error in user login:', error);
-//         res.status(500).json({ message: 'Internal server error' });
-//     }
-// });
 
 router.post('/users/add-address', verify, async (req, res) => {
     if (req.user.phone === req.body.phone) {
