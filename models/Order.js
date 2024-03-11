@@ -25,6 +25,7 @@ const orderSchema = new mongoose.Schema({
         slug: { type: String },
         image: { type: String },
         price: { type: String },
+        category: { type: String },
         options: {
             type: mongoose.Schema.Types.Mixed
         }
