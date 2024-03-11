@@ -457,6 +457,9 @@ router.post(`/sms-login`, async (req, res) => {
         const partner = await PartnerModel.findOne({ phone, otp, otpExpiry: { $gt: Date.now() } });
         if (!partner) {
             const user = await PartnerModel.findOne({ 'pickUpPersons.phone': phone });
+            if (!user) {
+                return res.status(404).json({ message: "User not found" })
+            }
             const pickUpPerson = user.pickUpPersons.find(person => person.phone === phone);
             if (!user || !pickUpPerson || pickUpPerson.otp !== otp || pickUpPerson.otpExpiry < Date.now()) {
                 return res.status(400).json({ error: "Invalid OTP" });
