@@ -13,7 +13,8 @@ const DynamicSchema = new mongoose.Schema({
         type: String
     },
     dates: [String],
-    time: [String]
+    time: [String],
+    GST:{type:Number}
 
 });
 

@@ -836,5 +836,29 @@ router.put("/requote/partner/:phone/:orderId", verify, async (req, res) => {
     }
 });
 
+router.put("/update-coins-after-payment/:phone", verify, async (req, res) => {
+    const phone = req.params.phone;
+    const { coins } = req.body;
+
+    try {
+        const partner = await PartnerModel.findOne({ phone });
+        if (!partner) {
+            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
+        }
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            let totalCoins = parseInt(partner.coins) + parseInt(coins);
+            partner.coins = totalCoins;
+            await partner.save();
+            res.status(200).json({ message: "Coins added successfully" });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: error.message });
+    }
+
+})
+
 
 module.exports = router;

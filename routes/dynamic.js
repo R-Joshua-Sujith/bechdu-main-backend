@@ -228,5 +228,42 @@ router.post('/calendar/add-time', async (req, res) => {
     }
 });
 
+router.get('/get-gst-value', async (req, res) => {
+    try {
+        const pageName = "GST PAGE"; // Name of the page you want to fetch
+        const pageData = await DynamicModel.findOne({ page: pageName });
+
+        if (!pageData) {
+            return res.status(404).json({ message: 'Page not found' });
+        }
+
+        res.json({
+            gst: pageData.GST
+        });
+    } catch (error) {
+        console.error('Error fetching page data:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+router.put("/update-gst-value", async (req, res) => {
+    const { gstValue } = req.body;
+    try {
+        // Find the document with coinValue
+        let gst = await DynamicModel.findOne({ page: "GST PAGE" });
+
+
+        // Update the coinValue
+        gst.GST = gstValue;
+
+        // Save the updated dynamic model
+        await gst.save();
+
+        res.json({ message: 'GST % Updated Successfully' });
+    } catch (error) {
+        console.error("Error updating coin value:", error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
 
 module.exports = router;
