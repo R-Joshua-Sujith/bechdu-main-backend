@@ -421,7 +421,7 @@ const sendSMS = async (mobileNumber) => {
                 "recipients": [
                     {
                         "mobiles": mobileNumber,
-                        "var": otp
+                        "otp": otp
                     }
                 ]
             }
