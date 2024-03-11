@@ -317,25 +317,40 @@ router.put('/order/assign/partner/:orderId', async (req, res) => {
         const orderId = req.params.orderId;
         const { partnerName, partnerPhone } = req.body;
 
-        const existingOrder = await OrderModel.findOne({ orderId });
-
-        if (existingOrder.partner.partnerName !== '' || existingOrder.partner.partnerPhone !== '') {
-            return res.status(400).json({ error: 'Partner already assigned for this order' });
+        // const existingOrder = await OrderModel.findOne({ orderId });
+        const partner = await PartnerModel.findOne({ phone: partnerPhone });
+        if (!partner) {
+            return res.status(404).json({ error: 'Partner not found' });
         }
-
-
-        // Update partner details in the order
-        const updatedOrder = await OrderModel.findOneAndUpdate(
-            { orderId },
-            { $set: { 'partner.partnerName': partnerName, 'partner.partnerPhone': partnerPhone, status: 'processing' } },
-            { new: true }
-        );
-
-        if (!updatedOrder) {
+        // if (existingOrder.partner.partnerName !== '' || existingOrder.partner.partnerPhone !== '') {
+        //     return res.status(400).json({ error: 'Partner already assigned for this order' });
+        // }
+        const order = await OrderModel.findOne({ orderId });
+        if (!order) {
             return res.status(404).json({ error: 'Order not found' });
         }
+        if (order.partner.partnerName !== '' && order.partner.partnerPhone !== '') {
+            return res.status(400).json({ error: 'Order already accepted by a partner' });
+        }
 
-        res.status(200).json(updatedOrder);
+        const coinsToDeduct = parseInt(order.coins);
+        const partnerCoins = parseInt(partner.coins);
+        if (partnerCoins < coinsToDeduct) {
+            return res.status(400).json({ error: 'Insufficient balance' });
+        }
+        order.partner.partnerName = partner.name
+        order.partner.partnerPhone = partnerPhone;
+        order.status = "processing";
+
+
+        order.logs.unshift({
+            message: `Order assigned to partner ${partnerName} (${partnerPhone}) from Admin ,Coins deducted ${coinsToDeduct}`,
+        });
+        partner.coins = (partnerCoins - coinsToDeduct).toString();
+        await order.save();
+        await partner.save();
+        res.status(200).json({ message: "order assigned successfully" });
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -352,13 +367,25 @@ router.put('/order/cancel/partner/:orderId', async (req, res) => {
 
 
         // Update partner details in the order
+
         const updatedOrder = await OrderModel.findOneAndUpdate(
             { orderId },
-            { $set: { 'partner.partnerName': "", 'partner.partnerPhone': "", status: "new" } },
+            {
+                $set: {
+                    'partner.partnerName': "",
+                    'partner.partnerPhone': "",
+                    'partner.pickUpPersonName': "",
+                    'partner.pickUpPersonPhone': "",
+                    status: "new"
+                }
+            },
             { new: true }
         );
 
-        if (!updatedOrder) {
+        if (updatedOrder) {
+            updatedOrder.logs.unshift({ message: `Order deassigned from partner ${existingOrder.partner.partnerName} (${existingOrder.partner.partnerPhone}) from admin`, });
+            await updatedOrder.save();
+        } else {
             return res.status(404).json({ error: 'Order not found' });
         }
 
@@ -600,10 +627,13 @@ router.post("/accept-order/:partnerPhone/:orderId", verify, async (req, res) => 
             order.partner.partnerName = partner.name
             order.partner.partnerPhone = partnerPhone;
             order.status = "processing";
+            order.logs.unshift({
+                message: `Order Accepted by partner ${partner.name} (${partner.phone})`,
+            });
 
             partner.coins = (partnerCoins - coinsToDeduct).toString();
 
-            order.partner.coins -= coinsToDeduct;
+            // order.partner.coins -= coinsToDeduct;
             await order.save();
             await partner.save();
             res.status(200).json({ message: "Order Accepted Successfully" })
@@ -780,7 +810,9 @@ router.post("/assign-order/:partnerPhone/:pickUpPersonId/:orderId", verify, asyn
             }
             order.partner.pickUpPersonName = pickUpPerson.name;
             order.partner.pickUpPersonPhone = pickUpPerson.phone;
-
+            order.logs.unshift({
+                message: `Order Assigned to Pickup person ${pickUpPerson.name} (${pickUpPerson.phone})`,
+            });
             await order.save();
             res.status(200).json({ message: "Order Assigned Successfully" })
         } else {
@@ -811,6 +843,9 @@ router.post("/deassign-order/:partnerPhone/:orderId", verify, async (req, res) =
 
         // Check if loggedInDevice matches
         if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+            order.logs.unshift({
+                message: `Order Deassigned from Pickup person ${order.partner.pickUpPersonName} (${order.partner.pickUpPersonPhone})`,
+            });
 
             order.partner.pickUpPersonName = "";
             order.partner.pickUpPersonPhone = "";
@@ -850,34 +885,78 @@ router.put("/requote/partner/:phone/:orderId", verify, async (req, res) => {
     const phone = req.params.phone;
     const { price, options } = req.body;
 
-    try {
-        const partner = await PartnerModel.findOne({ phone });
-        if (!partner) {
-            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
-        }
-        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
-            const order = await OrderModel.findById(orderId);
-
-            if (!order) {
-                return res.status(404).json({ message: "Order not found" });
+    if (req.user.role === "Partner") {
+        try {
+            const partner = await PartnerModel.findOne({ phone });
+            if (!partner) {
+                return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
             }
-            if (order.partner.partnerPhone != partner.phone) {
-                return res.status(200).json({ message: "No Access to perform this action" })
+            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+                const order = await OrderModel.findById(orderId);
+
+                if (!order) {
+                    return res.status(404).json({ message: "Order not found" });
+                }
+                if (order.partner.partnerPhone != partner.phone) {
+                    return res.status(200).json({ message: "No Access to perform this action" })
+                }
+                // Update product price and options
+                order.logs.unshift({
+                    message: `Order was requoted by Partner ${order.partner.partnerName} (${order.partner.partnerPhone}) from previous price ${order.productDetails.price} to current price ${price}`,
+                });
+                order.productDetails.price = price;
+                order.productDetails.options = options;
+
+                // Save updated order
+                await order.save();
+
+                res.status(200).json({ message: "Requote done successfully" });
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ` });
             }
-            // Update product price and options
-            order.productDetails.price = price;
-            order.productDetails.options = options;
-
-            // Save updated order
-            await order.save();
-
-            res.status(200).json({ message: "Requote done successfully" });
-        } else {
-            res.status(403).json({ error: `No Access to perform this action ` });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
         }
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+    } else if (req.user.role === "pickUp") {
+        try {
+            const user = await PartnerModel.findOne({ 'pickUpPersons.phone': phone });
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+            const pickUpPerson = user.pickUpPersons.find(person => person.phone === phone);
+            if (!pickUpPerson) {
+                return res.status(400).json({ error: "User not found" });
+            }
+            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+                const order = await OrderModel.findById(orderId);
+
+                if (!order) {
+                    return res.status(404).json({ message: "Order not found" });
+                }
+                if (order.partner.pickUpPersonPhone != phone) {
+                    return res.status(200).json({ message: "No Access to perform this action" })
+                }
+                order.logs.unshift({
+                    message: `Order was requoted by Pickup person ${order.partner.pickUpPersonName} (${order.partner.pickUpPersonPhone}) from previous price ${order.productDetails.price} to current price ${price}`,
+                });
+                // Update product price and options
+                order.productDetails.price = price;
+                order.productDetails.options = options;
+
+                // Save updated order
+                await order.save();
+
+                res.status(200).json({ message: "Requote done successfully" });
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ` });
+            }
+        }
+        catch (error) {
+            res.status(500).json({ error: error.message });
+        }
     }
+
+
 });
 
 router.put("/update-coins-after-payment/:phone", verify, async (req, res) => {
@@ -908,35 +987,77 @@ router.put("/cancel-order/:orderId/:phone", verify, async (req, res) => {
     const phone = req.params.phone;
     const orderId = req.params.orderId;
     const { cancellationReason } = req.body;
-    try {
-        const partner = await PartnerModel.findOne({ phone });
-        if (!partner) {
-            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
-        }
-        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
-            const order = await OrderModel.findById(orderId);
-
-            if (!order) {
-                return res.status(404).json({ error: 'Order not found' });
+    if (req.user.role === "Partner") {
+        try {
+            const partner = await PartnerModel.findOne({ phone });
+            if (!partner) {
+                return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
             }
-            if (order.partner.
-                partnerPhone != partner.phone
-            ) {
+            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+                const order = await OrderModel.findById(orderId);
 
-                return res.status(200).json({ message: "No Access to perform this action" })
+                if (!order) {
+                    return res.status(404).json({ error: 'Order not found' });
+                }
+                if (order.partner.
+                    partnerPhone != partner.phone
+                ) {
+
+                    return res.status(200).json({ message: "No Access to perform this action" })
+                }
+
+                order.logs.unshift({
+                    message: `Order was cancelled by Partner ${order.partner.partnerName} (${order.partner.partnerPhone}) Cancellation Reason : ${cancellationReason}`,
+                });
+                // Update the order status to 'cancel' and store the cancellation reason
+                order.status = 'cancelled';
+                order.cancellationReason = cancellationReason;
+                await order.save();
+                res.status(200).json({ message: "Order cancelled successfully" });
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ` });
             }
-
-            // Update the order status to 'cancel' and store the cancellation reason
-            order.status = 'cancelled';
-            order.cancellationReason = cancellationReason;
-            await order.save();
-            res.status(200).json({ message: "Order cancelled successfully" });
-        } else {
-            res.status(403).json({ error: `No Access to perform this action ` });
+        } catch (error) {
+            console.log(error)
+            res.status(500).json({ message: error.message });
         }
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({ message: error.message });
+    } else if (req.user.role === "pickUp") {
+        try {
+            const user = await PartnerModel.findOne({ 'pickUpPersons.phone': phone });
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+            const pickUpPerson = user.pickUpPersons.find(person => person.phone === phone);
+            if (!pickUpPerson) {
+                return res.status(400).json({ error: "User not found" });
+            }
+            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+                const order = await OrderModel.findById(orderId);
+
+                if (!order) {
+                    return res.status(404).json({ message: "Order not found" });
+                }
+                if (order.partner.pickUpPersonPhone != phone) {
+                    return res.status(200).json({ message: "No Access to perform this action" })
+                }
+                order.logs.unshift({
+                    message: `Order was cancelled by Pickup person ${order.partner.pickUpPersonName} (${order.partner.pickUpPersonPhone})
+                    Cancellation Reason : ${cancellationReason} `,
+                });
+
+                order.status = 'cancelled';
+                order.cancellationReason = cancellationReason;
+                await order.save();
+                res.status(200).json({ message: "Order cancelled successfully" });
+
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ` });
+            }
+        }
+        catch (error) {
+            console.log(error.message)
+            res.status(500).json({ error: error.message });
+        }
     }
 })
 
@@ -944,71 +1065,148 @@ router.put("/complete-order/:orderId/:phone", verify, async (req, res) => {
     const phone = req.params.phone;
     const orderId = req.params.orderId;
     const { deviceInfo } = req.body;
-    try {
-        const partner = await PartnerModel.findOne({ phone });
-        if (!partner) {
-            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
-        }
-        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
-            const order = await OrderModel.findById(orderId);
-
-            if (!order) {
-                return res.status(404).json({ error: 'Order not found' });
+    if (req.user.role === "Partner") {
+        try {
+            const partner = await PartnerModel.findOne({ phone });
+            if (!partner) {
+                return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
             }
-            if (order.partner.
-                partnerPhone != partner.phone
-            ) {
+            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+                const order = await OrderModel.findById(orderId);
 
-                return res.status(200).json({ message: "No Access to perform this action" })
+                if (!order) {
+                    return res.status(404).json({ error: 'Order not found' });
+                }
+                if (order.partner.
+                    partnerPhone != partner.phone
+                ) {
+
+                    return res.status(200).json({ message: "No Access to perform this action" })
+                }
+                order.logs.unshift({
+                    message: `Order was completed by Partner ${order.partner.partnerName} (${order.partner.partnerPhone})`,
+                });
+                // Update the order status to 'cancel' and store the cancellation reason
+                order.deviceInfo = deviceInfo
+                order.status = 'Completed';
+                await order.save();
+                res.status(200).json({ message: "Order completed successfully" });
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ` });
             }
-
-            // Update the order status to 'cancel' and store the cancellation reason
-            order.deviceInfo = deviceInfo
-            order.status = 'Completed';
-            await order.save();
-            res.status(200).json({ message: "Order completed successfully" });
-        } else {
-            res.status(403).json({ error: `No Access to perform this action ` });
+        } catch (error) {
+            console.log(error)
+            res.status(500).json({ message: error.message });
         }
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({ message: error.message });
+    } else if (req.user.role === "pickUp") {
+        try {
+            const user = await PartnerModel.findOne({ 'pickUpPersons.phone': phone });
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+            const pickUpPerson = user.pickUpPersons.find(person => person.phone === phone);
+            if (!pickUpPerson) {
+                return res.status(400).json({ error: "User not found" });
+            }
+            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+                const order = await OrderModel.findById(orderId);
+
+                if (!order) {
+                    return res.status(404).json({ message: "Order not found" });
+                }
+                if (order.partner.pickUpPersonPhone != phone) {
+                    return res.status(200).json({ message: "No Access to perform this action" })
+                }
+                order.logs.unshift({
+                    message: `Order was completed by Pickup person ${order.partner.pickUpPersonName}`,
+                });
+                order.deviceInfo = deviceInfo
+                order.status = 'Completed';
+                await order.save();
+                res.status(200).json({ message: "Order completed successfully" });
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ` });
+            }
+        }
+        catch (error) {
+            res.status(500).json({ error: error.message });
+        }
     }
+
 })
 
 router.put("/reschedule-order/:orderId/:phone", verify, async (req, res) => {
     const phone = req.params.phone;
     const orderId = req.params.orderId;
     const { pickUpDetails } = req.body;
-    try {
-        const partner = await PartnerModel.findOne({ phone });
-        if (!partner) {
-            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
-        }
-        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
-            const order = await OrderModel.findById(orderId);
-
-            if (!order) {
-                return res.status(404).json({ error: 'Order not found' });
+    if (req.user.role === "Partner") {
+        try {
+            const partner = await PartnerModel.findOne({ phone });
+            if (!partner) {
+                return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
             }
-            if (order.partner.
-                partnerPhone != partner.phone
-            ) {
+            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+                const order = await OrderModel.findById(orderId);
 
-                return res.status(200).json({ message: "No Access to perform this action" })
+                if (!order) {
+                    return res.status(404).json({ error: 'Order not found' });
+                }
+                if (order.partner.
+                    partnerPhone != partner.phone
+                ) {
+
+                    return res.status(200).json({ message: "No Access to perform this action" })
+                }
+                order.logs.unshift({
+                    message: `Order was rescheduled by Partner ${order.partner.partnerName} (${order.partner.partnerPhone}) from ${order.pickUpDetails.date} ${pickUpDetails.time} to ${pickUpDetails.date} ${pickUpDetails.time}`,
+                });
+
+                // Update the order status to 'cancel' and store the cancellation reason
+                order.pickUpDetails = pickUpDetails;
+                order.status = 'rescheduled';
+                await order.save();
+                res.status(200).json({ message: "Order rescheduled  successfully" });
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ` });
             }
-
-            // Update the order status to 'cancel' and store the cancellation reason
-            order.pickUpDetails = pickUpDetails;
-            order.status = 'rescheduled';
-            await order.save();
-            res.status(200).json({ message: "Order rescheduled  successfully" });
-        } else {
-            res.status(403).json({ error: `No Access to perform this action ` });
+        } catch (error) {
+            console.log(error)
+            res.status(500).json({ message: error.message });
         }
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({ message: error.message });
+    } else if (req.user.role === "pickUp") {
+        try {
+            const user = await PartnerModel.findOne({ 'pickUpPersons.phone': phone });
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+            const pickUpPerson = user.pickUpPersons.find(person => person.phone === phone);
+            if (!pickUpPerson) {
+                return res.status(400).json({ error: "User not found" });
+            }
+            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+                const order = await OrderModel.findById(orderId);
+
+                if (!order) {
+                    return res.status(404).json({ message: "Order not found" });
+                }
+                if (order.partner.pickUpPersonPhone != phone) {
+                    return res.status(200).json({ message: "No Access to perform this action" })
+                }
+                order.logs.unshift({
+                    message: `Order was rescheduled by Pickup person ${order.partner.pickUpPersonName} (${order.partner.pickUpPersonPhone}) from ${order.pickUpDetails.date} ${pickUpDetails.time} to ${pickUpDetails.date} ${pickUpDetails.time}  `,
+                });
+
+                order.pickUpDetails = pickUpDetails;
+                order.status = 'rescheduled';
+                await order.save();
+                res.status(200).json({ message: "Order rescheduled  successfully" });
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ` });
+            }
+        }
+        catch (error) {
+            res.status(500).json({ error: error.message });
+        }
     }
 })
 

@@ -117,6 +117,10 @@ router.post('/create-order', verify, async (req, res) => {
                 coins
             });
 
+            newOrder.logs.push({
+                message: `Order created by User`,
+            });
+
             // Save the new order to the database
             const savedOrder = await newOrder.save();
             const deletedAbundantOrder = await AbundantOrderModel.deleteMany({
@@ -262,6 +266,7 @@ router.put('/:orderId/cancel', async (req, res) => {
         }
 
         // Update the order status to 'cancel' and store the cancellation reason
+        order.logs.unshift({ message: `Order was cancelled by admin Cancellation Reason : ${cancellationReason}` });
         order.status = 'cancelled';
         order.cancellationReason = cancellationReason;
 
@@ -286,6 +291,7 @@ router.put('/:orderId/user-cancel', verify, async (req, res) => {
             }
 
             // Update the order status to 'cancel' and store the cancellation reason
+            order.logs.unshift({ message: `Order was cancelled by user Cancellation Reason : ${cancellationReason}` });
             order.status = 'cancelled';
             order.cancellationReason = cancellationReason;
 
@@ -306,11 +312,11 @@ router.put('/:orderId/complete', async (req, res) => {
     const { orderId } = req.params;
     const { deviceInfo } = req.body;
     try {
-        console.log(req.body);
         const order = await OrderModel.findById(orderId);
         if (!order) {
             return res.status(404).json({ error: 'Order Not Found' });
         }
+        order.logs.unshift({ message: `Order was completed by Admin` });
         order.deviceInfo = deviceInfo
         order.status = 'Completed';
         await order.save();

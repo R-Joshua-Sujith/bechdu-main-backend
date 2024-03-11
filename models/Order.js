@@ -53,7 +53,13 @@ const orderSchema = new mongoose.Schema({
         pickUpPersonName: { type: String, default: "" },
         pickUpPersonPhone: { type: String, default: "" }
     },
-    coins: { type: String }
+    coins: { type: String },
+    logs: [
+        {
+            message: { type: String },
+            timestamp: { type: Date, default: Date.now }
+        }
+    ]
 }, {
     timestamps: true
 })
