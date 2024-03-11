@@ -799,7 +799,7 @@ router.get("/partners/:phone", verify, async (req, res) => {
 
         // Respond with the partner data in JSON format
     } catch (error) {
-        res.status(500).json({ message: error.message }); // Handle errors
+        res.status(500).json({ error: error.message }); // Handle errors
     }
 });
 
@@ -832,7 +832,7 @@ router.put("/requote/partner/:phone/:orderId", verify, async (req, res) => {
             res.status(403).json({ error: `No Access to perform this action ` });
         }
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -855,9 +855,45 @@ router.put("/update-coins-after-payment/:phone", verify, async (req, res) => {
         }
     } catch (error) {
         console.log(error)
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ error: error.message });
     }
 
+})
+
+router.put("/cancel-order/:orderId/:phone", verify, async (req, res) => {
+    const phone = req.params.phone;
+    const orderId = req.params.orderId;
+    const { cancellationReason } = req.body;
+    try {
+        const partner = await PartnerModel.findOne({ phone });
+        if (!partner) {
+            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
+        }
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            const order = await OrderModel.findById(orderId);
+
+            if (!order) {
+                return res.status(404).json({ error: 'Order not found' });
+            }
+            if (order.partner.
+                partnerPhone != partner.phone
+            ) {
+
+                return res.status(200).json({ message: "No Access to perform this action" })
+            }
+
+            // Update the order status to 'cancel' and store the cancellation reason
+            order.status = 'cancelled';
+            order.cancellationReason = cancellationReason;
+            await order.save();
+            res.status(200).json({ message: "Order cancelled successfully" });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: error.message });
+    }
 })
 
 
