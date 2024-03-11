@@ -408,21 +408,37 @@ router.post('/send-sms', async (req, res) => {
     const { mobileNumber } = req.body;
     const formattedMobileNumber = `91${mobileNumber}`;
     try {
-        let user = await PartnerModel.findOne({ phone: mobileNumber });
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+        const partner = await PartnerModel.findOne({ phone: mobileNumber });
+
+        if (!partner) {
+            const user = await PartnerModel.findOne({ 'pickUpPersons.phone': mobileNumber });
+            if (!user) {
+                return res.status(404).json({ message: "User not found" })
+            }
+            const pickUpPerson = user.pickUpPersons.find(person => person.phone === mobileNumber);
+            const result = await sendSMS(formattedMobileNumber);
+            if (result && result.otp && result.otpExpiry) {
+                const { otp, otpExpiry } = result;
+                pickUpPerson.otp = otp;
+                pickUpPerson.otpExpiry = otpExpiry
+                await user.save();
+                res.json({ message: "OTP Sent Successfully" });
+            } else {
+                res.status(500).json({ error: 'Failed to send OTP' });
+            }
+        } else {
+            const result = await sendSMS(formattedMobileNumber);
+            if (result && result.otp && result.otpExpiry) {
+                const { otp, otpExpiry } = result;
+                partner.otp = otp;
+                partner.otpExpiry = otpExpiry;
+                await partner.save();
+                res.json({ message: "OTP Sent Successfully" });
+            } else {
+                res.status(500).json({ error: 'Failed to send OTP' });
+            }
         }
 
-        const result = await sendSMS(formattedMobileNumber);
-        if (result && result.otp && result.otpExpiry) {
-            const { otp, otpExpiry } = result;
-            user.otp = otp;
-            user.otpExpiry = otpExpiry;
-            await user.save();
-            res.json({ message: "OTP Sent Successfully" });
-        } else {
-            res.status(500).json({ error: 'Failed to send OTP' });
-        }
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to send OTP' });
@@ -440,25 +456,49 @@ router.post(`/sms-login`, async (req, res) => {
         const { otp, phone } = req.body;
         const partner = await PartnerModel.findOne({ phone, otp, otpExpiry: { $gt: Date.now() } });
         if (!partner) {
-            return res.status(400).json({ error: "Invalid OTP" });
+            const user = await PartnerModel.findOne({ 'pickUpPersons.phone': phone });
+            const pickUpPerson = user.pickUpPersons.find(person => person.phone === phone);
+            if (!user || !pickUpPerson || pickUpPerson.otp !== otp || pickUpPerson.otpExpiry > Date.now()) {
+                return res.status(400).json({ error: "Invalid OTP" });
+            }
+
+            pickUpPerson.otp = ""
+            pickUpPerson.otpExpiry = ""
+            pickUpPerson.loggedInDevice = req.headers['user-agent'];
+            const payload = {
+                loggedInDevice: req.headers['user-agent'],
+                phone: phone,
+                role: pickUpPerson.role,
+                id: pickUpPerson._id,
+            }
+            const token = jwt.sign(payload, secretKey);
+            await user.save();
+            res.status(200).json({
+                role: pickUpPerson.role,
+                phone: phone,
+                token: token,
+                message: "Login successful"
+            });
+        } else {
+            partner.otp = ""
+            partner.otpExpiry = ""
+            partner.loggedInDevice = req.headers['user-agent'];
+            const payload = {
+                loggedInDevice: req.headers['user-agent'],
+                phone: phone,
+                role: partner.role,
+                id: partner._id,
+            }
+            const token = jwt.sign(payload, secretKey);
+            await partner.save();
+            res.status(200).json({
+                role: partner.role,
+                phone: phone,
+                token: token,
+                message: "Login successful"
+            });
         }
-        partner.otp = ""
-        partner.otpExpiry = ""
-        partner.loggedInDevice = req.headers['user-agent'];
-        const payload = {
-            loggedInDevice: req.headers['user-agent'],
-            phone: phone,
-            role: partner.role,
-            id: partner._id,
-        }
-        const token = jwt.sign(payload, secretKey);
-        await partner.save();
-        res.status(200).json({
-            role: partner.role,
-            phone: phone,
-            token: token,
-            message: "Login successful"
-        });
+
     } catch (error) {
         console.log(error)
         res.status(500).json({ error: "Server Error" })
