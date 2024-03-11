@@ -90,5 +90,36 @@ const verify = (req, res, next) => {
 //     }
 // })
 
+router.get('/get-pickup-guy-orders/:pickUpPhone', verify, async (req, res) => {
+    try {
+        const phone = req.params.pickUpPhone;
+
+        // Fetch partner based on phone number
+        const user = await PartnerModel.findOne({ 'pickUpPersons.phone': phone });
+        if (!user) {
+            return res.status(404).json({ error: 'Pickup guy not found' });
+        }
+        const pickUpPerson = user.pickUpPersons.find(person => person.phone === phone);
+
+        // Check if loggedInDevice matches
+        if (req.user.phone === pickUpPerson.phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+            // Fetch orders whose pincode matches any of the partner's pinCodes
+            // and partner.partnerName and partner.phone are empty strings
+            const matchingOrders = await OrderModel.find({
+                'partner.partnerPhone': user.phone,
+                'partner.pickUpPersonPhone': pickUpPerson.phone,
+            }).sort({ createdAt: -1 });
+
+            res.status(200).json({ orders: matchingOrders });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ${req.user.loggedInDevice} ${partner.loggedInDevice}` });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+
+});
+
 
 module.exports = router;

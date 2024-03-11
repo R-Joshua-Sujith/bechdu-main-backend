@@ -861,7 +861,9 @@ router.put("/requote/partner/:phone/:orderId", verify, async (req, res) => {
             if (!order) {
                 return res.status(404).json({ message: "Order not found" });
             }
-
+            if (order.partner.partnerPhone != partner.phone) {
+                return res.status(200).json({ message: "No Access to perform this action" })
+            }
             // Update product price and options
             order.productDetails.price = price;
             order.productDetails.options = options;
@@ -869,7 +871,7 @@ router.put("/requote/partner/:phone/:orderId", verify, async (req, res) => {
             // Save updated order
             await order.save();
 
-            res.status(200).json({ message: "Product price and options updated successfully" });
+            res.status(200).json({ message: "Requote done successfully" });
         } else {
             res.status(403).json({ error: `No Access to perform this action ` });
         }
