@@ -306,6 +306,7 @@ router.put('/:orderId/complete', async (req, res) => {
     const { orderId } = req.params;
     const { deviceInfo } = req.body;
     try {
+        console.log(req.body);
         const order = await OrderModel.findById(orderId);
         if (!order) {
             return res.status(404).json({ error: 'Order Not Found' });

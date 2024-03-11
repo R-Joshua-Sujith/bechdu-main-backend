@@ -784,6 +784,40 @@ router.post("/assign-order/:partnerPhone/:pickUpPersonId/:orderId", verify, asyn
     }
 })
 
+router.post("/deassign-order/:partnerPhone/:orderId", verify, async (req, res) => {
+    try {
+        const partnerPhone = req.params.partnerPhone;
+
+        // Fetch partner based on phone number
+        const partner = await PartnerModel.findOne({ phone: partnerPhone });
+        if (!partner) {
+            return res.status(404).json({ error: 'Partner not found' });
+        }
+        const orderId = req.params.orderId;
+
+        // Fetch the order by ID
+        const order = await OrderModel.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        // Check if loggedInDevice matches
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+
+            order.partner.pickUpPersonName = "";
+            order.partner.pickUpPersonPhone = "";
+
+            await order.save();
+            res.status(200).json({ message: "Order Deassigned Successfully" })
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+})
+
 router.get("/partners/:phone", verify, async (req, res) => {
     const phone = req.params.phone; // Extract the phone number from the request parameters
     try {
@@ -887,6 +921,78 @@ router.put("/cancel-order/:orderId/:phone", verify, async (req, res) => {
             order.cancellationReason = cancellationReason;
             await order.save();
             res.status(200).json({ message: "Order cancelled successfully" });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: error.message });
+    }
+})
+
+router.put("/complete-order/:orderId/:phone", verify, async (req, res) => {
+    const phone = req.params.phone;
+    const orderId = req.params.orderId;
+    const { deviceInfo } = req.body;
+    try {
+        const partner = await PartnerModel.findOne({ phone });
+        if (!partner) {
+            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
+        }
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            const order = await OrderModel.findById(orderId);
+
+            if (!order) {
+                return res.status(404).json({ error: 'Order not found' });
+            }
+            if (order.partner.
+                partnerPhone != partner.phone
+            ) {
+
+                return res.status(200).json({ message: "No Access to perform this action" })
+            }
+
+            // Update the order status to 'cancel' and store the cancellation reason
+            order.deviceInfo = deviceInfo
+            order.status = 'Completed';
+            await order.save();
+            res.status(200).json({ message: "Order completed successfully" });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: error.message });
+    }
+})
+
+router.put("/reschedule-order/:orderId/:phone", verify, async (req, res) => {
+    const phone = req.params.phone;
+    const orderId = req.params.orderId;
+    const { pickUpDetails } = req.body;
+    try {
+        const partner = await PartnerModel.findOne({ phone });
+        if (!partner) {
+            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
+        }
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            const order = await OrderModel.findById(orderId);
+
+            if (!order) {
+                return res.status(404).json({ error: 'Order not found' });
+            }
+            if (order.partner.
+                partnerPhone != partner.phone
+            ) {
+
+                return res.status(200).json({ message: "No Access to perform this action" })
+            }
+
+            // Update the order status to 'cancel' and store the cancellation reason
+            order.pickUpDetails = pickUpDetails;
+            order.status = 'rescheduled';
+            await order.save();
+            res.status(200).json({ message: "Order rescheduled  successfully" });
         } else {
             res.status(403).json({ error: `No Access to perform this action ` });
         }
