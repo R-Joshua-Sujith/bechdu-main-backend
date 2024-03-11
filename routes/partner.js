@@ -429,75 +429,11 @@ router.post('/send-sms', async (req, res) => {
     }
 });
 
-// router.post('/send-sms-pick-up', async (req, res) => {
-//     try {
-//         const { mobileNumber } = req.body;
-
-//         // Find the partner with the specified pickUpPerson phone number
-//         const partner = await PartnerModel.findOne({ 'pickUpPersons.phone': phone });
-
-//         if (!partner) {
-//             return res.status(404).json({ message: 'Pickup person not found' });
-//         }
-
-//         // Find the pickUpPerson within the partner
-//         const pickUpPerson = partner.pickUpPersons.find(person => person.phone === phone);
-
-//         // Invalidate any previous session if pickUpPerson is already logged in
-//         if (pickUpPerson.loggedInDevice) {
-//             pickUpPerson.loggedInDevice = null;
-//             await partner.save();
-//         }
-
-//         const payload = {
-//             phone: phone,
-//             role: pickUpPerson.role,
-//             id: pickUpPerson._id
-//         }
-
-//         // Generate JWT token
-//         const token = jwt.sign(payload, secretKey);
-
-//         // Store device identifier in pickUpPerson document
-//         pickUpPerson.loggedInDevice = req.headers['user-agent']; // Using user-agent as device identifier
-//         await partner.save();
-
-//         res.json({ token });
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Server Error' });
-//     }
-// });
 
 
-router.post('/send-sms-pick-up', async (req, res) => {
-    try {
-        const { mobileNumber } = req.body;
-        const formattedMobileNumber = `91${mobileNumber}`;
 
 
-        const user = await PartnerModel.findOne({ 'pickUpPersons.phone': mobileNumber });
 
-        if (!user) {
-            return res.status(404).json({ message: 'Pickup person not found' });
-        }
-        const pickUpPerson = user.pickUpPersons.find(person => person.phone === mobileNumber);
-        const result = await sendSMS(formattedMobileNumber);
-        if (result && result.otp && result.otpExpiry) {
-            const { otp, otpExpiry } = result;
-            pickUpPerson.otp = otp;
-            pickUpPerson.otpExpiry = otpExpiry
-            await user.save();
-            res.json({ message: "OTP Sent Successfully" });
-        } else {
-            res.status(500).json({ error: 'Failed to send OTP' });
-        }
-
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error' });
-    }
-});
 
 router.post(`/sms-login`, async (req, res) => {
     try {

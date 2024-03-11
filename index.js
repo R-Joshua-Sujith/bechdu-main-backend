@@ -13,10 +13,11 @@ const orderRoute = require("./routes/order")
 const promoRoute = require("./routes/promoCode")
 const abundantRoute = require("./routes/abundantOrder")
 const statisticRoute = require("./routes/statistics")
-const partnerRoute = require("./routes/partner")
-const coinRoute = require("./routes/coins")
-const uploadRoute = require("./routes/uploads")
-const dynamicRoute = require("./routes/dynamic")
+const partnerRoute = require("./routes/partner");
+const coinRoute = require("./routes/coins");
+const uploadRoute = require("./routes/uploads");
+const dynamicRoute = require("./routes/dynamic");
+const pickUpRoute = require("./routes/pickUp");
 
 dotenv.config();
 const app = express();
@@ -45,6 +46,7 @@ app.use("/partner", partnerRoute);
 app.use("/coins", coinRoute);
 app.use("/uploads", uploadRoute);
 app.use("/dynamic", dynamicRoute)
+app.use("/pickup", pickUpRoute)
 
 
 
