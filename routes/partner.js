@@ -1210,7 +1210,7 @@ router.put("/reschedule-order/:orderId/:phone", verify, async (req, res) => {
                     return res.status(200).json({ message: "No Access to perform this action" })
                 }
                 order.logs.unshift({
-                    message: `Order was rescheduled by Partner ${order.partner.partnerName} (${order.partner.partnerPhone}) from ${order.pickUpDetails.date} ${pickUpDetails.time} to ${pickUpDetails.date} ${pickUpDetails.time}`,
+                    message: `Order was rescheduled by Partner ${order.partner.partnerName} (${order.partner.partnerPhone}) from ${order.pickUpDetails.date} ${pickUpDetails.time} to ${pickUpDetails.date} ${pickUpDetails.time} Reschedule reason : ${pickUpDetails.reason}`,
                 });
 
                 // Update the order status to 'cancel' and store the cancellation reason
@@ -1245,7 +1245,7 @@ router.put("/reschedule-order/:orderId/:phone", verify, async (req, res) => {
                     return res.status(200).json({ message: "No Access to perform this action" })
                 }
                 order.logs.unshift({
-                    message: `Order was rescheduled by Pickup person ${order.partner.pickUpPersonName} (${order.partner.pickUpPersonPhone}) from ${order.pickUpDetails.date} ${pickUpDetails.time} to ${pickUpDetails.date} ${pickUpDetails.time}  `,
+                    message: `Order was rescheduled by Pickup person ${order.partner.pickUpPersonName} (${order.partner.pickUpPersonPhone}) from ${order.pickUpDetails.date} ${pickUpDetails.time} to ${pickUpDetails.date} ${pickUpDetails.time} Reschedule reason : ${pickUpDetails.reason}  `,
                 });
 
                 order.pickUpDetails = pickUpDetails;
