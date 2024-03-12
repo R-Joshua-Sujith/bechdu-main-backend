@@ -266,4 +266,41 @@ router.put("/update-gst-value", async (req, res) => {
     }
 });
 
+
+router.get('/getCompanyDetails', async (req, res) => {
+    try {
+        const pageName = "Company Details"; // Name of the page you want to fetch
+        const pageData = await DynamicModel.findOne({ page: pageName });
+
+        if (!pageData) {
+            return res.status(404).json({ message: 'Page not found' });
+        }
+
+        res.json(pageData.state)
+    } catch (error) {
+        console.error('Error fetching page data:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+router.put("/update-state-name", async (req, res) => {
+    const { state } = req.body;
+    try {
+        // Find the document with coinValue
+        let company = await DynamicModel.findOne({ page: "Company Details" });
+
+
+        // Update the coinValue
+        company.state = state;
+
+        // Save the updated dynamic model
+        await company.save();
+
+        res.json({ message: 'State Updated Successfully' });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 module.exports = router;

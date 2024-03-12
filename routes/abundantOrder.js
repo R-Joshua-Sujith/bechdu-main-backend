@@ -43,6 +43,7 @@ router.post("/create-order", verify, async (req, res) => {
             res.status(201).json({ message: 'Order Created Successfully' })
 
         } catch (error) {
+            console.log(error)
             res.status(500).json({ message: 'Internal Server Error' })
         }
     } else {

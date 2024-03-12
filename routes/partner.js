@@ -5,6 +5,9 @@ const OrderModel = require("../models/Order")
 const dotenv = require("dotenv");
 const axios = require("axios");
 const jwt = require("jsonwebtoken");
+const DynamicModel = require('../models/Dynamic')
+const createPaymentInvoice = require("./createPaymentInvoice")
+const RefundModel = require("../models/Refund")
 
 dotenv.config();
 
@@ -35,7 +38,8 @@ router.post("/create-partner", async (req, res) => {
             name,
             email,
             address,
-            pinCodes
+            pinCodes,
+            state
         } = req.body;
 
         // Check if partner with the provided phone number already exists
@@ -50,6 +54,7 @@ router.post("/create-partner", async (req, res) => {
             email,
             address,
             pinCodes,
+            state,
             pickUp: [],
             role: "Partner",
             coins: "0"
@@ -115,11 +120,12 @@ router.get('/get-all-partners', async (req, res) => {
                 { name: { $regex: search, $options: 'i' } },
                 { phone: { $regex: search, $options: 'i' } },
                 { address: { $regex: search, $options: 'i' } },
+                { state: { $regex: search, $options: 'i' } }
             ];
         }
 
         const allPartners = await PartnerModel.find(query)
-            .select('phone name email address pinCodes coins')
+            .select('phone name email address pinCodes coins state')
             .sort({ createdAt: -1 }) // Assuming you have a createdAt field in your PartnerSchema
             .skip(skip)
             .limit(parseInt(pageSize));
@@ -170,6 +176,7 @@ router.put('/update-partner/:id', async (req, res) => {
             email,
             address,
             pinCodes,
+            state
         } = req.body;
 
         // Find the partner by ID
@@ -182,6 +189,7 @@ router.put('/update-partner/:id', async (req, res) => {
         partner.email = email || partner.email;
         partner.address = address || partner.address;
         partner.pinCodes = pinCodes || partner.pinCodes;
+        partner.state = state || partner.state;
 
         // Save updated partner details
         await partner.save();
@@ -597,6 +605,7 @@ router.get('/get-assigned-partner-orders/:partnerPhone', verify, async (req, res
 
 router.post("/accept-order/:partnerPhone/:orderId", verify, async (req, res) => {
     try {
+
         const partnerPhone = req.params.partnerPhone;
 
         // Fetch partner based on phone number
@@ -624,6 +633,13 @@ router.post("/accept-order/:partnerPhone/:orderId", verify, async (req, res) => 
             if (partnerCoins < coinsToDeduct) {
                 return res.status(400).json({ error: 'Insufficient balance' });
             }
+            partner.transaction.unshift({
+                type: "debited",
+                coins: coinsToDeduct,
+                orderID: `${order.orderId}`,
+                message: `${order.productDetails.name}`,
+                image: `${order.productDetails.image}`
+            })
             order.partner.partnerName = partner.name
             order.partner.partnerPhone = partnerPhone;
             order.status = "processing";
@@ -961,9 +977,11 @@ router.put("/requote/partner/:phone/:orderId", verify, async (req, res) => {
 
 router.put("/update-coins-after-payment/:phone", verify, async (req, res) => {
     const phone = req.params.phone;
-    const { coins } = req.body;
+    const { coins, price, gstPrice, paymentId, gstPercentage } = req.body;
 
     try {
+        const CompanyData = await DynamicModel.findOne({ page: "Company Details" })
+        console.log(CompanyData)
         const partner = await PartnerModel.findOne({ phone });
         if (!partner) {
             return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
@@ -971,13 +989,24 @@ router.put("/update-coins-after-payment/:phone", verify, async (req, res) => {
         if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
             let totalCoins = parseInt(partner.coins) + parseInt(coins);
             partner.coins = totalCoins;
+            partner.transaction.unshift({
+                type: "credited",
+                paymentId,
+                price,
+                gstPrice,
+                gstPercentage,
+                partnerState: partner.state,
+                HomeState: CompanyData.state,
+                coins: coins,
+                message: "Online Payment,"
+            })
             await partner.save();
             res.status(200).json({ message: "Coins added successfully" });
         } else {
             res.status(403).json({ error: `No Access to perform this action ` });
         }
     } catch (error) {
-        console.log(error)
+        console.log(error.message)
         res.status(500).json({ error: error.message });
     }
 
@@ -1005,6 +1034,9 @@ router.put("/cancel-order/:orderId/:phone", verify, async (req, res) => {
 
                     return res.status(200).json({ message: "No Access to perform this action" })
                 }
+                if (order.status === 'cancelled') {
+                    return res.status(200).json({ message: "Order Already Cancelled" })
+                }
 
                 order.logs.unshift({
                     message: `Order was cancelled by Partner ${order.partner.partnerName} (${order.partner.partnerPhone}) Cancellation Reason : ${cancellationReason}`,
@@ -1012,7 +1044,15 @@ router.put("/cancel-order/:orderId/:phone", verify, async (req, res) => {
                 // Update the order status to 'cancel' and store the cancellation reason
                 order.status = 'cancelled';
                 order.cancellationReason = cancellationReason;
+                const newRefund = new RefundModel({
+                    orderID: order.orderId,
+                    cancellationReason: cancellationReason,
+                    partnerPhone: partner.phone,
+                    partnerName: partner.name,
+                    coins: order.coins // Assuming you have a function to calculate the refund coins
+                });
                 await order.save();
+                await newRefund.save();
                 res.status(200).json({ message: "Order cancelled successfully" });
             } else {
                 res.status(403).json({ error: `No Access to perform this action ` });
@@ -1040,14 +1080,26 @@ router.put("/cancel-order/:orderId/:phone", verify, async (req, res) => {
                 if (order.partner.pickUpPersonPhone != phone) {
                     return res.status(200).json({ message: "No Access to perform this action" })
                 }
+                if (order.status === 'cancelled') {
+                    return res.status(200).json({ message: "Order Already Cancelled" })
+                }
                 order.logs.unshift({
                     message: `Order was cancelled by Pickup person ${order.partner.pickUpPersonName} (${order.partner.pickUpPersonPhone})
                     Cancellation Reason : ${cancellationReason} `,
                 });
 
+
                 order.status = 'cancelled';
                 order.cancellationReason = cancellationReason;
+                const newRefund = new RefundModel({
+                    orderID: order.orderId,
+                    cancellationReason: cancellationReason,
+                    partnerPhone: partner.phone,
+                    partnerName: partner.name,
+                    coins: order.coins // Assuming you have a function to calculate the refund coins
+                });
                 await order.save();
+                await newRefund.save();
                 res.status(200).json({ message: "Order cancelled successfully" });
 
             } else {
@@ -1209,6 +1261,46 @@ router.put("/reschedule-order/:orderId/:phone", verify, async (req, res) => {
         }
     }
 })
+
+
+router.get("/transaction/:partnerPhone/:transactionId", verify, async (req, res) => {
+    const partnerPhone = req.params.partnerPhone;
+    const transactionId = req.params.transactionId;
+
+    try {
+        const partner = await PartnerModel.findOne({ phone: partnerPhone });
+        if (!partner) {
+            return res.status(404).json({ message: "Partner not found" });
+        }
+
+        const transaction = partner.transaction.find(trans => trans._id.toString() === transactionId);
+        if (!transaction) {
+            return res.status(404).json({ message: "Transaction not found" });
+        }
+
+        const user = {
+            phone: partner.phone,
+            name: partner.name,
+            address: partner.address,
+            state: partner.state,
+        };
+        const invoice = {
+            user,
+            transaction
+        }
+        const pdfBuffer = await createPaymentInvoice(invoice);
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
+
+        // Send the PDF buffer as response
+        res.send(pdfBuffer);
+
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 
 module.exports = router;

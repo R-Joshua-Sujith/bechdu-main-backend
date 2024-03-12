@@ -14,7 +14,8 @@ const DynamicSchema = new mongoose.Schema({
     },
     dates: [String],
     time: [String],
-    GST:{type:Number}
+    GST: { type: Number },
+    state: { type: String }
 
 });
 
