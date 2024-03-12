@@ -53,11 +53,9 @@ router.post('/admin-login', async (req, res) => {
             email: admin.email,
             role: admin.role
         }
-        const options = {
-            expiresIn: "3d"
-        }
 
-        const token = jwt.sign(payload, secretKey, options);
+
+        const token = jwt.sign(payload, secretKey);
 
         res.status(200).json({
             email: admin.email,

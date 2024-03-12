@@ -1293,7 +1293,6 @@ router.get("/transaction/:partnerPhone/:transactionId", verify, async (req, res)
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
 
-        // Send the PDF buffer as response
         res.send(pdfBuffer);
 
     } catch (error) {
@@ -1326,6 +1325,63 @@ router.get('/transactions/:phone', verify, async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
+router.get('/transactions/credited/:phone', verify, async (req, res) => {
+    try {
+        const { phone } = req.params;
+        const { page = 1, pageSize = 5 } = req.query;
+        const skip = (page - 1) * pageSize;
+
+        // Fetch transactions only for the specified partner using their phone number
+        const partner = await PartnerModel.findOne({ phone });
+        if (!partner) {
+            return res.status(404).json({ message: 'Partner not found' });
+        }
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            const creditedTransactions = partner.transaction.filter(transaction => transaction.type === 'credited');
+            const transactions = creditedTransactions.slice(skip, skip + parseInt(pageSize));
+
+            res.json({
+                data: transactions
+            });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get('/transactions/debited/:phone', verify, async (req, res) => {
+    try {
+        const { phone } = req.params;
+        const { page = 1, pageSize = 5 } = req.query;
+        const skip = (page - 1) * pageSize;
+
+        // Fetch transactions only for the specified partner using their phone number
+        const partner = await PartnerModel.findOne({ phone });
+        if (!partner) {
+            return res.status(404).json({ message: 'Partner not found' });
+        }
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            const debitedTransactions = partner.transaction.filter(transaction => transaction.type === 'debited');
+            const transactions = debitedTransactions.slice(skip, skip + parseInt(pageSize));
+
+            res.json({
+                data: transactions
+            });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 
 
 module.exports = router;
