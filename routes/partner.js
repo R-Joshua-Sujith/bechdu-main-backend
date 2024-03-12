@@ -1302,5 +1302,30 @@ router.get("/transaction/:partnerPhone/:transactionId", verify, async (req, res)
     }
 });
 
+router.get('/transactions/:phone', verify, async (req, res) => {
+    try {
+        const { phone } = req.params;
+        const { page = 1, pageSize = 5 } = req.query;
+        const skip = (page - 1) * pageSize;
+
+        // Fetch transactions only for the specified partner using their phone number
+        const partner = await PartnerModel.findOne({ phone });
+        if (!partner) {
+            return res.status(404).json({ message: 'Partner not found' });
+        }
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice || req.user.role === "superadmin") {
+            const transactions = partner.transaction.slice(skip, skip + parseInt(pageSize));
+
+            res.json(transactions);
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 
 module.exports = router;
