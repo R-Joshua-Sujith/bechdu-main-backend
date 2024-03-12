@@ -6,7 +6,8 @@ const refundSchema = new mongoose.Schema({
     partnerPhone: { type: String, required: true },
     partnerName: { type: String, required: true },
     coins: { type: Number, required: true },
-    status: { type: String, default: "pending" }
+    status: { type: String, default: "pending" },
+    timestamp: { type: Date, default: Date.now }
 });
 
 const RefundModel = mongoose.model("Refund", refundSchema);

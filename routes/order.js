@@ -10,6 +10,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 const CoinsModel = require('../models/Coins');
 const createInvoice = require("./createInvoice")
+const RefundModel = require("../models/Refund")
 
 dotenv.config();
 const secretKey = process.env.JWT_SECRET_KEY
@@ -264,12 +265,25 @@ router.put('/:orderId/cancel', async (req, res) => {
         if (!order) {
             return res.status(404).json({ error: 'Order not found' });
         }
+        if (order.status === "cancelled") {
+            return res.status(200).json({ message: "Order Already Cancelled" })
+        }
 
         // Update the order status to 'cancel' and store the cancellation reason
         order.logs.unshift({ message: `Order was cancelled by admin Cancellation Reason : ${cancellationReason}` });
         order.status = 'cancelled';
         order.cancellationReason = cancellationReason;
 
+        if (order?.partner?.partnerPhone) {
+            const newRefund = new RefundModel({
+                orderID: order.orderId,
+                cancellationReason: cancellationReason,
+                partnerPhone: order.partner.partnerPhone,
+                partnerName: order.partner.partnerName,
+                coins: order.coins // Assuming you have a function to calculate the refund coins
+            });
+            await newRefund.save();
+        }
         await order.save();
 
         return res.status(200).json({ message: 'Order canceled successfully' });

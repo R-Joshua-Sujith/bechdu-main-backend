@@ -637,7 +637,7 @@ router.post("/accept-order/:partnerPhone/:orderId", verify, async (req, res) => 
                 type: "debited",
                 coins: coinsToDeduct,
                 orderID: `${order.orderId}`,
-                message: `${order.productDetails.name}`,
+                message: `Debited for order ${order.orderId}`,
                 image: `${order.productDetails.image}`
             })
             order.partner.partnerName = partner.name
