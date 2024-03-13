@@ -998,7 +998,7 @@ router.put("/update-coins-after-payment/:phone", verify, async (req, res) => {
                 partnerState: partner.state,
                 HomeState: CompanyData.state,
                 coins: coins,
-                message: "Online Payment,"
+                message: "Online Payment"
             })
             await partner.save();
             res.status(200).json({ message: "Coins added successfully" });
@@ -1009,7 +1009,6 @@ router.put("/update-coins-after-payment/:phone", verify, async (req, res) => {
         console.log(error.message)
         res.status(500).json({ error: error.message });
     }
-
 })
 
 router.put("/cancel-order/:orderId/:phone", verify, async (req, res) => {
@@ -1191,6 +1190,7 @@ router.put("/reschedule-order/:orderId/:phone", verify, async (req, res) => {
     const phone = req.params.phone;
     const orderId = req.params.orderId;
     const { pickUpDetails } = req.body;
+    console.log(req.body)
     if (req.user.role === "Partner") {
         try {
             const partner = await PartnerModel.findOne({ phone });
@@ -1257,6 +1257,7 @@ router.put("/reschedule-order/:orderId/:phone", verify, async (req, res) => {
             }
         }
         catch (error) {
+            console.log(error)
             res.status(500).json({ error: error.message });
         }
     }
@@ -1272,30 +1273,36 @@ router.get("/transaction/:partnerPhone/:transactionId", verify, async (req, res)
         if (!partner) {
             return res.status(404).json({ message: "Partner not found" });
         }
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice || req.user.role === "superadmin") {
+            const transaction = partner.transaction.find(trans => trans._id.toString() === transactionId);
+            if (!transaction) {
+                return res.status(404).json({ message: "Transaction not found" });
+            }
 
-        const transaction = partner.transaction.find(trans => trans._id.toString() === transactionId);
-        if (!transaction) {
-            return res.status(404).json({ message: "Transaction not found" });
+            const user = {
+                phone: partner.phone,
+                name: partner.name,
+                address: partner.address,
+                state: partner.state,
+            };
+            const invoice = {
+                user,
+                transaction
+            }
+            const pdfBuffer = await createPaymentInvoice(invoice);
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
+
+            res.send(pdfBuffer);
+
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
         }
 
-        const user = {
-            phone: partner.phone,
-            name: partner.name,
-            address: partner.address,
-            state: partner.state,
-        };
-        const invoice = {
-            user,
-            transaction
-        }
-        const pdfBuffer = await createPaymentInvoice(invoice);
-
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
-
-        res.send(pdfBuffer);
 
     } catch (error) {
+        console.log(error)
         console.log(error.message);
         res.status(500).json({ error: error.message });
     }
@@ -1376,6 +1383,31 @@ router.get('/transactions/debited/:phone', verify, async (req, res) => {
             res.status(403).json({ error: `No Access to perform this action ` });
         }
 
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+//for admin
+router.get('/get-partner-orders-admin/:partnerPhone', verify, async (req, res) => {
+    try {
+        const { partnerPhone } = req.params;
+        const { page = 1, pageSize = 10 } = req.query;
+        const skip = (page - 1) * pageSize;
+
+        if (req.user.role === "superadmin") {
+            const orders = await OrderModel.find({ 'partner.partnerPhone': partnerPhone })
+                .select('-deviceInfo -logs') // Excluding deviceInfo and logs fields
+                .skip(skip)
+                .limit(parseInt(pageSize))
+                .sort({ createdAt: -1 });
+
+            res.json(orders);
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+        // Fetch orders for the specified partner using their partnerPhone
 
     } catch (error) {
         res.status(500).json({ error: error.message });
