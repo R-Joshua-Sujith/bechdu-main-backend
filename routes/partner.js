@@ -355,6 +355,13 @@ router.put('/order/assign/partner/:orderId', async (req, res) => {
             message: `Order assigned to partner ${partnerName} (${partnerPhone}) from Admin ,Coins deducted ${coinsToDeduct}`,
         });
         partner.coins = (partnerCoins - coinsToDeduct).toString();
+        partner.transaction.unshift({
+            type: "debited",
+            coins: coinsToDeduct,
+            orderID: `${order.orderId}`,
+            message: `Debited for order ${order.orderId}`,
+            image: `${order.productDetails.image}`
+        })
         await order.save();
         await partner.save();
         res.status(200).json({ message: "order assigned successfully" });
@@ -397,7 +404,16 @@ router.put('/order/cancel/partner/:orderId', async (req, res) => {
             return res.status(404).json({ error: 'Order not found' });
         }
 
-        res.status(200).json(updatedOrder);
+        const newRefund = new RefundModel({
+            orderID: existingOrder.orderId,
+            cancellationReason: "Order Deassigned from admin",
+            partnerPhone: existingOrder.partner.partnerPhone,
+            partnerName: existingOrder.partner.partnerName,
+            coins: existingOrder.coins // Assuming you have a function to calculate the refund coins
+        });
+        await newRefund.save();
+
+        res.status(200).json("Deassigned Successfully");
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -542,6 +558,8 @@ router.post(`/sms-login`, async (req, res) => {
 router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
     try {
         const partnerPhone = req.params.partnerPhone;
+        const { page = 1, pageSize = 5 } = req.query;
+        const skip = (page - 1) * pageSize;
 
         // Fetch partner based on phone number
         const partner = await PartnerModel.findOne({ phone: partnerPhone });
@@ -558,7 +576,7 @@ router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
                 'partner.partnerName': '',
                 'partner.partnerPhone': '',
                 status: "new"
-            }).sort({ createdAt: -1 });
+            }).select('-deviceInfo').sort({ createdAt: -1 }).skip(skip).limit(parseInt(pageSize))
 
             res.status(200).json({ orders: matchingOrders });
         } else {
@@ -574,6 +592,9 @@ router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
 router.get('/get-assigned-partner-orders/:partnerPhone', verify, async (req, res) => {
     try {
         const partnerPhone = req.params.partnerPhone;
+        const { page = 1, pageSize = 5 } = req.query;
+        const skip = (page - 1) * pageSize;
+
 
         // Fetch partner based on phone number
         const partner = await PartnerModel.findOne({ phone: partnerPhone });
@@ -590,7 +611,7 @@ router.get('/get-assigned-partner-orders/:partnerPhone', verify, async (req, res
                 $and: [
                     { 'partner.partnerPhone': partnerPhone }
                 ]
-            }).sort({ createdAt: -1 });
+            }).select('-deviceInfo').sort({ createdAt: -1 }).skip(skip).limit(parseInt(pageSize))
 
             res.status(200).json({ orders: matchingOrders });
         } else {
@@ -988,7 +1009,7 @@ router.put("/update-coins-after-payment/:phone", verify, async (req, res) => {
         }
         if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
             let totalCoins = parseInt(partner.coins) + parseInt(coins);
-            partner.coins = totalCoins;
+            partner.coins = totalCoins.toString();
             partner.transaction.unshift({
                 type: "credited",
                 paymentId,
@@ -1293,7 +1314,7 @@ router.get("/transaction/:partnerPhone/:transactionId", verify, async (req, res)
 
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
-
+            console.log(pdfBuffer)
             res.send(pdfBuffer);
 
         } else {
@@ -1414,6 +1435,61 @@ router.get('/get-partner-orders-admin/:partnerPhone', verify, async (req, res) =
     }
 });
 
+router.post('/addCoins', verify, async (req, res) => {
+
+    const { message, coins, phone } = req.body;
+    try {
+        if (req.user.role === "superadmin") {
+            const partner = await PartnerModel.findOne({ phone: phone });
+            if (!partner) {
+                return res.status(404).json({ error: 'Partner not found' });
+            }
+            let totalCoins = parseInt(partner.coins) + parseInt(coins);
+            partner.coins = totalCoins.toString();
+            partner.transaction.unshift({
+                type: "credited",
+                coins: coins,
+                message: message
+            })
+            await partner.save();
+            res.status(200).json({ message: "Coins Added Successfully" })
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+    } catch (error) {
+        console.log(error.message)
+        res.status(500).json({ error: error.message });
+    }
+
+})
+
+router.post('/deductCoins', verify, async (req, res) => {
+
+    const { message, coins, phone } = req.body;
+    try {
+        if (req.user.role === "superadmin") {
+            const partner = await PartnerModel.findOne({ phone: phone });
+            if (!partner) {
+                return res.status(404).json({ error: 'Partner not found' });
+            }
+            let totalCoins = parseInt(partner.coins) - parseInt(coins);
+            partner.coins = totalCoins.toString();
+            partner.transaction.unshift({
+                type: "debited",
+                coins: coins,
+                message: message
+            })
+            await partner.save();
+            res.status(200).json({ message: "Coins Deducted Successfully" })
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+    } catch (error) {
+        console.log(error.message)
+        res.status(500).json({ error: error.message });
+    }
+
+})
 
 
 module.exports = router;
