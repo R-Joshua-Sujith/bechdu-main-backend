@@ -558,8 +558,12 @@ router.post(`/sms-login`, async (req, res) => {
 router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
     try {
         const partnerPhone = req.params.partnerPhone;
-        const { page = 1, pageSize = 5 } = req.query;
+        const { page = 1, pageSize = 5, search = '' } = req.query;
         const skip = (page - 1) * pageSize;
+
+        const searchRegex = new RegExp(search, 'i');
+
+
 
         // Fetch partner based on phone number
         const partner = await PartnerModel.findOne({ phone: partnerPhone });
@@ -571,12 +575,25 @@ router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
         if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
             // Fetch orders whose pincode matches any of the partner's pinCodes
             // and partner.partnerName and partner.phone are empty strings
-            const matchingOrders = await OrderModel.find({
-                'user.orderpincode': { $in: partner.pinCodes },
-                'partner.partnerName': '',
-                'partner.partnerPhone': '',
-                status: "new"
-            }).select('-deviceInfo').sort({ createdAt: -1 }).skip(skip).limit(parseInt(pageSize))
+            const query = {
+                $and: [
+                    { 'user.orderpincode': { $in: partner.pinCodes } },
+                    { 'partner.partnerName': '' },
+                    { 'partner.partnerPhone': '' },
+                    { status: "new" },
+                    {
+                        $or: [
+                            { orderId: searchRegex },
+                            { 'user.name': searchRegex },
+                            { 'user.email': searchRegex },
+                            { 'user.phone': searchRegex },
+                            { 'user.address': searchRegex },
+                            { 'productDetails.name': searchRegex }
+                        ]
+                    }
+                ]
+            };
+            const matchingOrders = await OrderModel.find(query).select('-deviceInfo').sort({ createdAt: -1 }).skip(skip).limit(parseInt(pageSize))
 
             res.status(200).json({ orders: matchingOrders });
         } else {
@@ -592,10 +609,10 @@ router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
 router.get('/get-assigned-partner-orders/:partnerPhone', verify, async (req, res) => {
     try {
         const partnerPhone = req.params.partnerPhone;
-        const { page = 1, pageSize = 5 } = req.query;
+        const { page = 1, pageSize = 5, search = '' } = req.query;
         const skip = (page - 1) * pageSize;
 
-
+        const searchRegex = new RegExp(search, 'i');
         // Fetch partner based on phone number
         const partner = await PartnerModel.findOne({ phone: partnerPhone });
         if (!partner) {
@@ -604,14 +621,21 @@ router.get('/get-assigned-partner-orders/:partnerPhone', verify, async (req, res
 
         // Check if loggedInDevice matches
         if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+            const query = {
+                'user.orderpincode': { $in: partner.pinCodes },
+                'partner.partnerPhone': partnerPhone,
+                $or: [
+                    { orderId: searchRegex },
+                    { 'user.name': searchRegex },
+                    { 'user.email': searchRegex },
+                    { 'user.phone': searchRegex },
+                    { 'user.address': searchRegex },
+                    { 'productDetails.name': searchRegex }
+                ]
+            };
             // Fetch orders whose pincode matches any of the partner's pinCodes
             // and partner.partnerName and partner.partnerPhone are empty strings
-            const matchingOrders = await OrderModel.find({
-                'user.orderpincode': { $in: partner.pinCodes },
-                $and: [
-                    { 'partner.partnerPhone': partnerPhone }
-                ]
-            }).select('-deviceInfo').sort({ createdAt: -1 }).skip(skip).limit(parseInt(pageSize))
+            const matchingOrders = await OrderModel.find(query).select('-deviceInfo').sort({ createdAt: -1 }).skip(skip).limit(parseInt(pageSize))
 
             res.status(200).json({ orders: matchingOrders });
         } else {
