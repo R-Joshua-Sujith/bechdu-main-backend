@@ -72,7 +72,8 @@ router.post('/create-order', verify, async (req, res) => {
                 payment,
                 pickUpDetails,
                 productDetails,
-                promo
+                promo,
+                platform
             } = req.body;
             console.log(req.body);
             const orderID = await generateCustomID();
@@ -115,7 +116,8 @@ router.post('/create-order', verify, async (req, res) => {
                 pickUpDetails,
                 productDetails,
                 promo,
-                coins
+                coins,
+                platform
             });
 
             newOrder.logs.push({
@@ -182,6 +184,7 @@ router.get('/get-all-orders', async (req, res) => {
         const query = {
             $or: [
                 { orderId: searchRegex },
+                { platform: searchRegex },
                 { 'user.name': searchRegex },
                 { 'user.email': searchRegex },
                 { 'user.phone': searchRegex },

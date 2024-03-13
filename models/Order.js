@@ -53,6 +53,10 @@ const orderSchema = new mongoose.Schema({
         pickUpPersonName: { type: String, default: "" },
         pickUpPersonPhone: { type: String, default: "" }
     },
+    platform: {
+        type: String,
+        default: "mobile"
+    },
     coins: { type: String },
     logs: [
         {

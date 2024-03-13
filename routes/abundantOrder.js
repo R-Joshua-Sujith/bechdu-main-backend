@@ -27,7 +27,7 @@ router.post("/create-order", verify, async (req, res) => {
     if (req.user.phone === req.body.user.phone) {
         try {
             const {
-                user, productDetails
+                user, productDetails, platform
             } = req.body;
             const existingUser = await UserModel.findOne({ phone: user.phone })
             existingUser.city = user.city;
@@ -37,7 +37,8 @@ router.post("/create-order", verify, async (req, res) => {
 
             const newOrder = new AbundantOrderModel({
                 user,
-                productDetails
+                productDetails,
+                platform
             })
             const savedOrder = await newOrder.save();
             res.status(201).json({ message: 'Order Created Successfully' })
@@ -61,6 +62,7 @@ router.get('/get-all-orders', async (req, res) => {
 
         if (search) {
             query.$or = [
+                { platform: { $regex: search, $options: 'i' } },
                 { 'user.phone': { $regex: search, $options: 'i' } },
                 { 'user.city': { $regex: search, $options: 'i' } },
                 { 'user.pincode': { $regex: search, $options: 'i' } },

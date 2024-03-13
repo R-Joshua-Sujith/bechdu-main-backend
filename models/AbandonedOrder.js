@@ -14,6 +14,10 @@ const adundantSchema = new mongoose.Schema({
             type: mongoose.Schema.Types.Mixed
         }
     },
+    platform: {
+        type: String,
+        default: "mobile"
+    }
 
 }, {
     timestamps: true

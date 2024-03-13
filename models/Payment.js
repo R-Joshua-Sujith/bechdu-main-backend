@@ -32,6 +32,9 @@ const paymentSchema = new mongoose.Schema({
     partnerState: {
         type: String,
     },
+    partnerName: {
+        type: String
+    },
     HomeState: {
         type: String
     },

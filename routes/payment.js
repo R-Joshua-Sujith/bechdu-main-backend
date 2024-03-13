@@ -46,6 +46,7 @@ router.post('/create-payments', verify, async (req, res) => {
                 price,
                 gstPrice,
                 gstPercentage,
+                partnerName: partner.name,
                 partnerState: partner.state,
                 HomeState: CompanyData.state,
                 message: "Bank Transfer"
@@ -66,6 +67,62 @@ router.post('/create-payments', verify, async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
+
+
+router.get('/get-all-payments', async (req, res) => {
+    try {
+        const { page = 1, pageSize = 5, search = '' } = req.query;
+        const skip = (page - 1) * pageSize;
+
+        // Use a regular expression to make the search case-insensitive and partial
+        const searchRegex = new RegExp(search, 'i');
+
+        const query = {
+            $or: [
+                { partnerPhone: searchRegex },
+                { partnerState: searchRegex },
+                { HomeState: searchRegex },
+                // Add more fields if needed for search
+            ],
+        };
+
+        const allPayments = await PaymentModel.find(query)
+            .sort({ createdAt: -1 }) // Sort by createdAt in descending order
+            .skip(skip)
+            .limit(parseInt(pageSize))
+            .select('-image'); // Excluding the image field from the response
+
+        // Format payments before sending response
+        const formattedPayments = allPayments.map(payment => {
+            // Calculate totalPrice by summing price and gstPrice
+            const totalPrice = payment.price + payment.gstPrice;
+
+            return {
+                ...payment.toObject(),
+                createdAt: payment.createdAt.toLocaleString('en-IN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                    timeZone: 'Asia/Kolkata' // Indian Standard Time
+                }),
+                totalPrice: totalPrice
+            };
+        });
+
+        const totalPayments = await PaymentModel.countDocuments(query);
+
+        res.json({
+            totalRows: totalPayments,
+            data: formattedPayments,
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 
 module.exports = router;
 
