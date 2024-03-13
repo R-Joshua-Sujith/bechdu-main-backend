@@ -19,6 +19,7 @@ const uploadRoute = require("./routes/uploads");
 const dynamicRoute = require("./routes/dynamic");
 const pickUpRoute = require("./routes/pickUp");
 const refundRoute = require("./routes/refund");
+const paymentRoute = require("./routes/payment")
 
 dotenv.config();
 const app = express();
@@ -49,6 +50,7 @@ app.use("/uploads", uploadRoute);
 app.use("/dynamic", dynamicRoute)
 app.use("/pickup", pickUpRoute);
 app.use("/refund", refundRoute);
+app.use("/payment", paymentRoute);
 
 
 
