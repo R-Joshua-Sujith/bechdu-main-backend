@@ -607,44 +607,81 @@ router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
 });
 
 router.get('/get-assigned-partner-orders/:partnerPhone', verify, async (req, res) => {
-    try {
-        const partnerPhone = req.params.partnerPhone;
-        const { page = 1, pageSize = 5, search = '' } = req.query;
-        const skip = (page - 1) * pageSize;
+    const partnerPhone = req.params.partnerPhone;
+    const { page = 1, pageSize = 5, search = '' } = req.query;
+    const skip = (page - 1) * pageSize;
+    const searchRegex = new RegExp(search, 'i');
+    if (req.user.role === "Partner") {
+        try {
+            // Fetch partner based on phone number
+            const partner = await PartnerModel.findOne({ phone: partnerPhone });
+            if (!partner) {
+                return res.status(404).json({ error: 'Partner not found' });
+            }
+            // Check if loggedInDevice matches
+            if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+                const query = {
+                    'user.orderpincode': { $in: partner.pinCodes },
+                    'partner.partnerPhone': partnerPhone,
+                    $or: [
+                        { orderId: searchRegex },
+                        { 'user.name': searchRegex },
+                        { 'user.email': searchRegex },
+                        { 'user.phone': searchRegex },
+                        { 'user.address': searchRegex },
+                        { 'productDetails.name': searchRegex }
+                    ]
+                };
+                // Fetch orders whose pincode matches any of the partner's pinCodes
+                // and partner.partnerName and partner.partnerPhone are empty strings
+                const matchingOrders = await OrderModel.find(query).select('-deviceInfo -logs').sort({ createdAt: -1 }).skip(skip).limit(parseInt(pageSize))
 
-        const searchRegex = new RegExp(search, 'i');
-        // Fetch partner based on phone number
-        const partner = await PartnerModel.findOne({ phone: partnerPhone });
-        if (!partner) {
-            return res.status(404).json({ error: 'Partner not found' });
+                res.status(200).json({ orders: matchingOrders });
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ${req.user.loggedInDevice} ${partner.loggedInDevice}` });
+            }
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Internal Server Error' });
         }
+    } else if (req.user.role === "pickUp") {
+        try {
+            const user = await PartnerModel.findOne({ 'pickUpPersons.phone': partnerPhone });
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+            const pickUpPerson = user.pickUpPersons.find(person => person.phone === partnerPhone);
+            if (!pickUpPerson) {
+                return res.status(400).json({ error: "User not found" });
+            }
+            if (req.user.phone === partnerPhone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+                const query = {
+                    'partner.pickUpPersonPhone': partnerPhone,
+                    $or: [
+                        { orderId: searchRegex },
+                        { 'user.name': searchRegex },
+                        { 'user.email': searchRegex },
+                        { 'user.phone': searchRegex },
+                        { 'user.address': searchRegex },
+                        { 'productDetails.name': searchRegex }
+                    ]
+                };
+                // Fetch orders whose pincode matches any of the partner's pinCodes
+                // and partner.partnerName and partner.partnerPhone are empty strings
+                const matchingOrders = await OrderModel.find(query).select('-deviceInfo -logs').sort({ createdAt: -1 }).skip(skip).limit(parseInt(pageSize))
 
-        // Check if loggedInDevice matches
-        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
-            const query = {
-                'user.orderpincode': { $in: partner.pinCodes },
-                'partner.partnerPhone': partnerPhone,
-                $or: [
-                    { orderId: searchRegex },
-                    { 'user.name': searchRegex },
-                    { 'user.email': searchRegex },
-                    { 'user.phone': searchRegex },
-                    { 'user.address': searchRegex },
-                    { 'productDetails.name': searchRegex }
-                ]
-            };
-            // Fetch orders whose pincode matches any of the partner's pinCodes
-            // and partner.partnerName and partner.partnerPhone are empty strings
-            const matchingOrders = await OrderModel.find(query).select('-deviceInfo').sort({ createdAt: -1 }).skip(skip).limit(parseInt(pageSize))
+                res.status(200).json({ orders: matchingOrders });
 
-            res.status(200).json({ orders: matchingOrders });
-        } else {
-            res.status(403).json({ error: `No Access to perform this action ${req.user.loggedInDevice} ${partner.loggedInDevice}` });
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ` });
+            }
+        } catch (error) {
+            console.log(error)
+            res.status(500).json({ error: error.message });
         }
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
     }
+
+
 
 });
 
