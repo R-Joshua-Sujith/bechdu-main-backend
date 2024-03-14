@@ -142,6 +142,17 @@ router.get('/get-payment/:id', async (req, res) => {
                 year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
+                second: '2-digit', // Include seconds
+                hour12: false,
+                timeZone: 'Asia/Kolkata' // Indian Standard Time
+            }),
+            updatedAt: payment.updatedAt.toLocaleString('en-IN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
                 hour12: false,
                 timeZone: 'Asia/Kolkata' // Indian Standard Time
             }),
@@ -153,6 +164,7 @@ router.get('/get-payment/:id', async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 router.put('/update-payment/:id', verify, async (req, res) => {
     try {
@@ -196,6 +208,66 @@ router.put('/update-payment/:id', verify, async (req, res) => {
         // Save the updated payment to the database
 
         res.json({ message: `${type === "approved" ? "Payment Approved" : "Payment Rejected"}` });
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+// Updated route definition
+router.get('/get-partner-payments/:partnerPhone', verify, async (req, res) => {
+    const partnerPhone = req.params.partnerPhone;
+    try {
+        const partner = await PartnerModel.findOne({ phone: partnerPhone });
+        if (!partner) {
+            return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
+        }
+        if (req.user.phone === req.params.partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+            const { page = 1, pageSize = 5 } = req.query;
+            const skip = (page - 1) * pageSize;
+
+
+
+            const query = {
+                partnerPhone: partnerPhone
+            };
+
+            const allPayments = await PaymentModel.find(query)
+                .sort({ createdAt: -1 }) // Sort by createdAt in descending order
+                .skip(skip)
+                .limit(parseInt(pageSize))
+                .select('-image'); // Excluding the image field from the response
+
+            // Format payments before sending response
+            const formattedPayments = allPayments.map(payment => {
+                // Calculate totalPrice by summing price and gstPrice
+                const totalPrice = payment.price + payment.gstPrice;
+
+                return {
+                    ...payment.toObject(),
+                    createdAt: payment.createdAt.toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false,
+                        timeZone: 'Asia/Kolkata' // Indian Standard Time
+                    }),
+                    totalPrice: totalPrice
+                };
+            });
+
+
+
+            res.json({
+                data: formattedPayments,
+            });
+        } else {
+            res.status(403).json({ error: `No Access to perform this action ` });
+        }
+
     } catch (error) {
         console.log(error)
         res.status(500).json({ error: error.message });

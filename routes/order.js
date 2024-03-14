@@ -190,6 +190,10 @@ router.get('/get-all-orders', async (req, res) => {
                 { 'user.phone': searchRegex },
                 { 'user.address': searchRegex },
                 { 'productDetails.name': searchRegex },
+                { 'partner.partnerName': searchRegex },
+                { 'partner.partnerPhone': searchRegex },
+                { 'partner.pickUpPersonPhone': searchRegex },
+                { 'partner.pickUpPersonName': searchRegex }
             ],
         };
 
