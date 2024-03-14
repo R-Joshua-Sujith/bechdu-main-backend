@@ -360,13 +360,14 @@ router.get('/generate-invoice/:phone/:orderID', verify, async (req, res) => {
 
             // Create PDF invoice in memory
             const pdfBuffer = await createInvoice(order);
-
+            const base64String = pdfBuffer.toString('base64');
             // Set response headers
-            res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
+            // res.setHeader('Content-Type', 'application/pdf');
+            // res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
 
             // Send the PDF buffer as response
-            res.send(pdfBuffer);
+            // res.send(pdfBuffer);
+            res.json({ base64String })
 
         } catch (error) {
             console.error('Error generating invoice:', error);

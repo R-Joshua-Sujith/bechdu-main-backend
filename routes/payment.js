@@ -49,7 +49,6 @@ router.post('/create-payments', verify, async (req, res) => {
                 partnerName: partner.name,
                 partnerState: partner.state,
                 HomeState: CompanyData.state,
-                message: "Bank Transfer"
             });
 
             // Save the payment to the database
@@ -119,6 +118,86 @@ router.get('/get-all-payments', async (req, res) => {
             data: formattedPayments,
         });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get('/get-payment/:id', async (req, res) => {
+    try {
+        const paymentId = req.params.id;
+
+        // Retrieve the payment using findById method
+        const payment = await PaymentModel.findById(paymentId);
+
+        if (!payment) {
+            return res.status(404).json({ error: "Payment not found" });
+        }
+
+        // Format the payment before sending response
+        const formattedPayment = {
+            ...payment.toObject(),
+            createdAt: payment.createdAt.toLocaleString('en-IN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+                timeZone: 'Asia/Kolkata' // Indian Standard Time
+            }),
+            totalPrice: payment.price + payment.gstPrice
+        };
+
+        res.json(formattedPayment);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/update-payment/:id', verify, async (req, res) => {
+    try {
+        const paymentId = req.params.id;
+        const { message, type } = req.body;
+
+
+
+        // Retrieve the payment using findById method
+        const payment = await PaymentModel.findById(paymentId);
+
+        if (!payment) {
+            return res.status(404).json({ error: "Payment not found" });
+        }
+
+        // Update the payment status and message
+        if (type === "approved") {
+            payment.status = "approved";
+            const partner = await PartnerModel.findOne({ phone: payment.partnerPhone });
+            let totalCoins = parseInt(partner.coins) + parseInt(payment.coins)
+            partner.coins = totalCoins.toString();
+            partner.transaction.unshift({
+                type: "credited",
+                paymentId: "Bank Transfer",
+                price: payment.price,
+                gstPrice: payment.gstPrice,
+                gstPercentage: payment.gstPercentage,
+                partnerState: payment.partnerState,
+                HomeState: payment.HomeState,
+                coins: payment.coins,
+                message: "Bank Transfer Approved by admin"
+            })
+            await partner.save();
+        }
+        if (type === "rejected") {
+            payment.status = "rejected";
+        }
+
+        payment.message = message;
+        await payment.save();
+        // Save the updated payment to the database
+
+        res.json({ message: `${type === "approved" ? "Payment Approved" : "Payment Rejected"}` });
+    } catch (error) {
+        console.log(error)
         res.status(500).json({ error: error.message });
     }
 });

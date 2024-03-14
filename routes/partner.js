@@ -1369,6 +1369,50 @@ router.put("/reschedule-order/:orderId/:phone", verify, async (req, res) => {
 })
 
 
+// router.get("/transaction/:partnerPhone/:transactionId", verify, async (req, res) => {
+//     const partnerPhone = req.params.partnerPhone;
+//     const transactionId = req.params.transactionId;
+
+//     try {
+//         const partner = await PartnerModel.findOne({ phone: partnerPhone });
+//         if (!partner) {
+//             return res.status(404).json({ message: "Partner not found" });
+//         }
+//         if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice || req.user.role === "superadmin") {
+//             const transaction = partner.transaction.find(trans => trans._id.toString() === transactionId);
+//             if (!transaction) {
+//                 return res.status(404).json({ message: "Transaction not found" });
+//             }
+
+//             const user = {
+//                 phone: partner.phone,
+//                 name: partner.name,
+//                 address: partner.address,
+//                 state: partner.state,
+//             };
+//             const invoice = {
+//                 user,
+//                 transaction
+//             }
+//             const pdfBuffer = await createPaymentInvoice(invoice);
+
+//             res.setHeader('Content-Type', 'application/pdf');
+//             res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
+//             console.log(pdfBuffer)
+//             res.send(pdfBuffer);
+
+//         } else {
+//             res.status(403).json({ error: `No Access to perform this action ` });
+//         }
+
+
+//     } catch (error) {
+//         console.log(error)
+//         console.log(error.message);
+//         res.status(500).json({ error: error.message });
+//     }
+// });
+
 router.get("/transaction/:partnerPhone/:transactionId", verify, async (req, res) => {
     const partnerPhone = req.params.partnerPhone;
     const transactionId = req.params.transactionId;
@@ -1396,10 +1440,14 @@ router.get("/transaction/:partnerPhone/:transactionId", verify, async (req, res)
             }
             const pdfBuffer = await createPaymentInvoice(invoice);
 
-            res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
-            console.log(pdfBuffer)
-            res.send(pdfBuffer);
+            // Convert PDF buffer to base64
+            const base64String = pdfBuffer.toString('base64');
+
+            // res.setHeader('Content-Type', 'application/pdf');
+            // res.setHeader('Content-Disposition', 'attachment; filename=invoice.pdf');
+
+            // Send base64 string as response
+            res.json({ base64String })
 
         } else {
             res.status(403).json({ error: `No Access to perform this action ` });
