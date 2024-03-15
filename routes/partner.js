@@ -21,13 +21,13 @@ const verify = (req, res, next) => {
         const token = authHeader.split(" ")[1];
         jwt.verify(token, secretKey, (err, user) => {
             if (err) {
-                return res.status(401).json({ error: "Session Expired" });
+                return res.status(403).json({ error: "Session Expired" });
             }
             req.user = user;
             next();
         })
     } else {
-        res.status(400).json({ error: "You are not authenticated" });
+        res.status(403).json({ error: "You are not authenticated" });
     }
 }
 
@@ -681,9 +681,58 @@ router.get('/get-assigned-partner-orders/:partnerPhone', verify, async (req, res
             res.status(500).json({ error: error.message });
         }
     }
+});
 
+router.get('/get-orders/:partnerPhone/:orderID', verify, async (req, res) => {
+    const orderId = req.params.orderID;
+    const partnerPhone = req.params.partnerPhone;
+    if (req.user.role === "Partner") {
+        try {
+            // Fetch partner based on phone number
+            const partner = await PartnerModel.findOne({ phone: partnerPhone });
+            if (!partner) {
+                return res.status(404).json({ error: 'Partner not found' });
+            }
+            // Check if loggedInDevice matches
+            if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+                const order = await OrderModel.findById(orderId)
+                if (order.partner.partnerPhone !== partner.phone) {
+                    return res.status(401).json({ error: "You can't perform this action" })
+                }
+                res.status(200).json(order);
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ${req.user.loggedInDevice} ${partner.loggedInDevice}` });
+            }
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    } else if (req.user.role === "pickUp") {
+        try {
+            const user = await PartnerModel.findOne({ 'pickUpPersons.phone': partnerPhone });
+            if (!user) {
+                return res.status(404).json({ message: "User not found" });
+            }
+            const pickUpPerson = user.pickUpPersons.find(person => person.phone === partnerPhone);
+            if (!pickUpPerson) {
+                return res.status(400).json({ error: "User not found" });
+            }
+            if (req.user.phone === partnerPhone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+                const order = await OrderModel.findById(orderId)
+                if (order.partner.pickUpPersonPhone !== pickUpPerson.phone) {
+                    return res.status(401).json({ error: "You can't perform this action" })
+                }
 
+                res.status(200).json(order);
 
+            } else {
+                res.status(403).json({ error: `No Access to perform this action ` });
+            }
+        } catch (error) {
+            console.log(error)
+            res.status(500).json({ error: error.message });
+        }
+    }
 });
 
 router.post("/accept-order/:partnerPhone/:orderId", verify, async (req, res) => {

@@ -347,28 +347,32 @@ router.post('/sms-login', async (req, res) => {
 });
 
 router.post('/account-deletion', verify, async (req, res) => {
-    try {
-        const { otp, phone } = req.body;
+    if (req.user.phone === req.body.phone) {
+        try {
+            const { otp, phone } = req.body;
 
-        // Find user by reset token, OTP, and email
-        const user = await UserModel.findOne({
-            phone,
-            otp,
-            otpExpiry: { $gt: Date.now() },
-        });
+            // Find user by reset token, OTP, and email
+            const user = await UserModel.findOne({
+                phone,
+                otp,
+                otpExpiry: { $gt: Date.now() },
+            });
 
-        if (!user) {
-            return res.status(400).json({ error: 'Invalid OTP' });
+            if (!user) {
+                return res.status(400).json({ error: 'Invalid OTP' });
+            }
+
+            user.status = "deleted"
+            user.otp = ""
+            user.otpExpiry = ""
+
+            await user.save();
+            return res.status(201).json({ message: "Account Deleted Successfully" })
+        } catch (error) {
+            res.status(500).json({ error: "Server Error" })
         }
-
-        user.status = "deleted"
-        user.otp = ""
-        user.otpExpiry = ""
-
-        await user.save();
-        return res.status(201).json({ message: "Account Deleted Successfully" })
-    } catch (error) {
-        res.status(500).json({ error: "Server Error" })
+    } else {
+        res.status(403).json({ error: "No Access to perform this action" })
     }
 });
 
