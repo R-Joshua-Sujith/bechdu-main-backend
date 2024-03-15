@@ -289,17 +289,18 @@ router.post('/send-sms', async (req, res) => {
     const { mobileNumber } = req.body;
     const formattedMobileNumber = `91${mobileNumber}`;
     try {
+        let user = await UserModel.findOne({ phone: mobileNumber });
+        if (user.status === "deleted") {
+            return res.status(500).json({ error: "You have deleted your account, can't login" })
+
+        }
+        if (!user) {
+            user = new UserModel({ phone: mobileNumber })
+        }
         const result = await sendSMS(formattedMobileNumber);
         if (result && result.otp && result.otpExpiry) {
             const { otp, otpExpiry } = result;
-            let user = await UserModel.findOne({ phone: mobileNumber });
-            if (user.status === "deleted") {
-                return res.status(500).json({ error: "You have deleted your account, can't login" })
 
-            }
-            if (!user) {
-                user = new UserModel({ phone: mobileNumber })
-            }
             user.otp = otp;
             user.otpExpiry = otpExpiry;
             await user.save();
