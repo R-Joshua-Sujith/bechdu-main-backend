@@ -505,7 +505,7 @@ router.post(`/sms-login`, async (req, res) => {
         if (!partner) {
             const user = await PartnerModel.findOne({ 'pickUpPersons.phone': phone });
             if (!user) {
-                return res.status(404).json({ message: "Invalid OTP" })
+                return res.status(404).json({ error: "Invalid OTP" })
             }
             const pickUpPerson = user.pickUpPersons.find(person => person.phone === phone);
             if (!user || !pickUpPerson || pickUpPerson.otp !== otp || pickUpPerson.otpExpiry < Date.now()) {
@@ -573,7 +573,7 @@ router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
         }
 
         // Check if loggedInDevice matches
-        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             // Fetch orders whose pincode matches any of the partner's pinCodes
             // and partner.partnerName and partner.phone are empty strings
             const query = {
@@ -598,7 +598,7 @@ router.get('/get-partner-orders/:partnerPhone', verify, async (req, res) => {
 
             res.status(200).json({ orders: matchingOrders });
         } else {
-            res.status(403).json({ error: `No Access to perform this action ${req.user.loggedInDevice} ${partner.loggedInDevice}` });
+            res.status(403).json({ error: `No Access to perform this action` });
         }
     } catch (error) {
         console.error(error);
@@ -620,7 +620,7 @@ router.get('/get-assigned-partner-orders/:partnerPhone', verify, async (req, res
                 return res.status(404).json({ error: 'Partner not found' });
             }
             // Check if loggedInDevice matches
-            if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+            if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
                 const query = {
                     'user.orderpincode': { $in: partner.pinCodes },
                     'partner.partnerPhone': partnerPhone,
@@ -655,7 +655,7 @@ router.get('/get-assigned-partner-orders/:partnerPhone', verify, async (req, res
             if (!pickUpPerson) {
                 return res.status(400).json({ error: "User not found" });
             }
-            if (req.user.phone === partnerPhone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+            if (req.user.phone === partnerPhone && req.user.loggedInDevice === pickUpPerson.loggedInDevice && pickUpPerson.status !== "blocked") {
                 const query = {
                     'partner.pickUpPersonPhone': partnerPhone,
                     $or: [
@@ -694,7 +694,7 @@ router.get('/get-orders/:partnerPhone/:orderID', verify, async (req, res) => {
                 return res.status(404).json({ error: 'Partner not found' });
             }
             // Check if loggedInDevice matches
-            if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+            if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
                 const order = await OrderModel.findById(orderId)
                 if (order.partner.partnerPhone !== partner.phone) {
                     return res.status(401).json({ error: "You can't perform this action" })
@@ -717,12 +717,11 @@ router.get('/get-orders/:partnerPhone/:orderID', verify, async (req, res) => {
             if (!pickUpPerson) {
                 return res.status(400).json({ error: "User not found" });
             }
-            if (req.user.phone === partnerPhone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+            if (req.user.phone === partnerPhone && req.user.loggedInDevice === pickUpPerson.loggedInDevice && pickUpPerson.status !== "blocked") {
                 const order = await OrderModel.findById(orderId)
                 if (order.partner.pickUpPersonPhone !== pickUpPerson.phone) {
                     return res.status(401).json({ error: "You can't perform this action" })
                 }
-
                 res.status(200).json(order);
 
             } else {
@@ -754,7 +753,7 @@ router.post("/accept-order/:partnerPhone/:orderId", verify, async (req, res) => 
         }
 
         // Check if loggedInDevice matches
-        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             if (order.partner.partnerName !== '' && order.partner.partnerPhone !== '') {
                 return res.status(400).json({ error: 'Order already accepted by a partner' });
             }
@@ -808,7 +807,7 @@ router.post('/add-pickup-person/:partnerPhone', verify, async (req, res) => {
             return res.status(404).json({ error: "Partner not found" });
         }
 
-        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             const phoneExists = await PartnerModel.exists({ $or: [{ phone }, { 'pickUpPersons.phone': phone }] });
             if (phoneExists) {
                 return res.status(400).json({ error: "Phone number already exists" });
@@ -824,9 +823,7 @@ router.post('/add-pickup-person/:partnerPhone', verify, async (req, res) => {
         } else {
             res.status(403).json({ error: `No Access to perform this action` });
         }
-
         // Check if the phone number already exists in either PartnerModel or pickUpPersons
-
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "Internal server error" });
@@ -844,7 +841,7 @@ router.get('/get-pickup-persons/:partnerPhone', verify, async (req, res) => {
         }
 
         // Check if the user has access
-        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             // Return the pick-up persons associated with the partner
             res.status(200).json({ pickUpPersons: partner.pickUpPersons });
         } else {
@@ -868,7 +865,7 @@ router.put('/block-pickup-person/:partnerPhone/:pickUpPersonId', verify, async (
         }
 
         // Check if the user has access
-        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             // Find the pick-up person by ID
             const pickUpPerson = partner.pickUpPersons.find(person => person._id.toString() === pickUpPersonId);
             if (!pickUpPerson) {
@@ -903,7 +900,7 @@ router.put('/unblock-pickup-person/:partnerPhone/:pickUpPersonId', verify, async
         }
 
         // Check if the user has access
-        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             // Find the pick-up person by ID
             const pickUpPerson = partner.pickUpPersons.find(person => person._id.toString() === pickUpPersonId);
             if (!pickUpPerson) {
@@ -946,7 +943,7 @@ router.post("/assign-order/:partnerPhone/:pickUpPersonId/:orderId", verify, asyn
         }
 
         // Check if loggedInDevice matches
-        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             if (order.partner.pickUpPersonName
                 !== '' && order.partner.pickUpPersonPhone
                 !== '') {
@@ -955,6 +952,9 @@ router.post("/assign-order/:partnerPhone/:pickUpPersonId/:orderId", verify, asyn
             const pickUpPerson = partner.pickUpPersons.find(person => person._id.toString() === pickUpPersonId);
             if (!pickUpPerson) {
                 return res.status(404).json({ error: "Pick-up person not found" });
+            }
+            if (order.partner.partnerPhone !== partner.phone) {
+                return res.status(401).json({ error: "You can't perform this action" })
             }
             order.partner.pickUpPersonName = pickUpPerson.name;
             order.partner.pickUpPersonPhone = pickUpPerson.phone;
@@ -990,7 +990,10 @@ router.post("/deassign-order/:partnerPhone/:orderId", verify, async (req, res) =
         }
 
         // Check if loggedInDevice matches
-        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
+            if (order.partner.partnerPhone !== partner.phone) {
+                return res.status(401).json({ error: "You can't perform this action" })
+            }
             order.logs.unshift({
                 message: `Order Deassigned from Pickup person ${order.partner.pickUpPersonName} (${order.partner.pickUpPersonPhone})`,
             });
@@ -1017,7 +1020,7 @@ router.get("/partners/:phone", verify, async (req, res) => {
             if (!partner) {
                 return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
             }
-            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
                 res.status(200).json(partner);
             } else {
                 res.status(403).json({ error: `No Access to perform this action ` });
@@ -1037,7 +1040,7 @@ router.get("/partners/:phone", verify, async (req, res) => {
             if (!pickUpPerson) {
                 return res.status(400).json({ error: "User not found" });
             }
-            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice && pickUpPerson.status !== "blocked") {
 
                 res.status(200).json(pickUpPerson);
             } else {
@@ -1062,7 +1065,7 @@ router.put("/requote/partner/:phone/:orderId", verify, async (req, res) => {
             if (!partner) {
                 return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
             }
-            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
                 const order = await OrderModel.findById(orderId);
 
                 if (!order) {
@@ -1098,7 +1101,7 @@ router.put("/requote/partner/:phone/:orderId", verify, async (req, res) => {
             if (!pickUpPerson) {
                 return res.status(400).json({ error: "User not found" });
             }
-            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice && pickUpPerson.status !== "blocked") {
                 const order = await OrderModel.findById(orderId);
 
                 if (!order) {
@@ -1141,7 +1144,7 @@ router.put("/update-coins-after-payment/:phone", verify, async (req, res) => {
         if (!partner) {
             return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
         }
-        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             let totalCoins = parseInt(partner.coins) + parseInt(coins);
             partner.coins = totalCoins.toString();
             partner.transaction.unshift({
@@ -1176,7 +1179,7 @@ router.put("/cancel-order/:orderId/:phone", verify, async (req, res) => {
             if (!partner) {
                 return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
             }
-            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
                 const order = await OrderModel.findById(orderId);
 
                 if (!order) {
@@ -1225,7 +1228,7 @@ router.put("/cancel-order/:orderId/:phone", verify, async (req, res) => {
             if (!pickUpPerson) {
                 return res.status(400).json({ error: "User not found" });
             }
-            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice && pickUpPerson.status !== "blocked") {
                 const order = await OrderModel.findById(orderId);
 
                 if (!order) {
@@ -1277,7 +1280,7 @@ router.put("/complete-order/:orderId/:phone", verify, async (req, res) => {
             if (!partner) {
                 return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
             }
-            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
                 const order = await OrderModel.findById(orderId);
 
                 if (!order) {
@@ -1314,7 +1317,7 @@ router.put("/complete-order/:orderId/:phone", verify, async (req, res) => {
             if (!pickUpPerson) {
                 return res.status(400).json({ error: "User not found" });
             }
-            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice && pickUpPerson.status !== "blocked") {
                 const order = await OrderModel.findById(orderId);
 
                 if (!order) {
@@ -1352,7 +1355,7 @@ router.put("/reschedule-order/:orderId/:phone", verify, async (req, res) => {
             if (!partner) {
                 return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
             }
-            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+            if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
                 const order = await OrderModel.findById(orderId);
 
                 if (!order) {
@@ -1390,7 +1393,7 @@ router.put("/reschedule-order/:orderId/:phone", verify, async (req, res) => {
             if (!pickUpPerson) {
                 return res.status(400).json({ error: "User not found" });
             }
-            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice) {
+            if (req.user.phone === phone && req.user.loggedInDevice === pickUpPerson.loggedInDevice && pickUpPerson.status !== "blocked") {
                 const order = await OrderModel.findById(orderId);
 
                 if (!order) {
@@ -1472,7 +1475,7 @@ router.get("/transaction/:partnerPhone/:transactionId", verify, async (req, res)
         if (!partner) {
             return res.status(404).json({ message: "Partner not found" });
         }
-        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice || req.user.role === "superadmin") {
+        if (req.user.phone === partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked" || req.user.role === "superadmin") {
             const transaction = partner.transaction.find(trans => trans._id.toString() === transactionId);
             if (!transaction) {
                 return res.status(404).json({ message: "Transaction not found" });
@@ -1522,7 +1525,7 @@ router.get('/transactions/:phone', verify, async (req, res) => {
         if (!partner) {
             return res.status(404).json({ message: 'Partner not found' });
         }
-        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice || req.user.role === "superadmin") {
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked" || req.user.role === "superadmin") {
             const transactions = partner.transaction.slice(skip, skip + parseInt(pageSize));
 
             res.json(transactions);
@@ -1547,7 +1550,7 @@ router.get('/transactions/credited/:phone', verify, async (req, res) => {
         if (!partner) {
             return res.status(404).json({ message: 'Partner not found' });
         }
-        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             const creditedTransactions = partner.transaction.filter(transaction => transaction.type === 'credited');
             const transactions = creditedTransactions.slice(skip, skip + parseInt(pageSize));
 
@@ -1575,7 +1578,7 @@ router.get('/transactions/debited/:phone', verify, async (req, res) => {
         if (!partner) {
             return res.status(404).json({ message: 'Partner not found' });
         }
-        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             const debitedTransactions = partner.transaction.filter(transaction => transaction.type === 'debited');
             const transactions = debitedTransactions.slice(skip, skip + parseInt(pageSize));
 
