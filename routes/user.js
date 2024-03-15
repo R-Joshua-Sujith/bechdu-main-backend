@@ -293,6 +293,10 @@ router.post('/send-sms', async (req, res) => {
         if (result && result.otp && result.otpExpiry) {
             const { otp, otpExpiry } = result;
             let user = await UserModel.findOne({ phone: mobileNumber });
+            if (user.status === "deleted") {
+                return res.status(500).json({ error: "You have deleted your account, can't login" })
+
+            }
             if (!user) {
                 user = new UserModel({ phone: mobileNumber })
             }
@@ -322,7 +326,7 @@ router.post('/sms-login', async (req, res) => {
         });
 
         if (!user) {
-            return res.status(400).json({ error: 'Invalid OTP or Phone' });
+            return res.status(400).json({ error: 'Invalid OTP' });
         }
 
         const payload = {
@@ -336,6 +340,32 @@ router.post('/sms-login', async (req, res) => {
 
         await user.save();
         return res.status(201).json({ user, token })
+    } catch (error) {
+        res.status(500).json({ error: "Server Error" })
+    }
+});
+
+router.post('/account-deletion', verify, async (req, res) => {
+    try {
+        const { otp, phone } = req.body;
+
+        // Find user by reset token, OTP, and email
+        const user = await UserModel.findOne({
+            phone,
+            otp,
+            otpExpiry: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return res.status(400).json({ error: 'Invalid OTP' });
+        }
+
+        user.status = "deleted"
+        user.otp = ""
+        user.otpExpiry = ""
+
+        await user.save();
+        return res.status(201).json({ message: "Account Deleted Successfully" })
     } catch (error) {
         res.status(500).json({ error: "Server Error" })
     }

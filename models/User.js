@@ -11,7 +11,11 @@ const UserSchema = new mongoose.Schema({
     pincode: { type: String, default: '' },
     city: { type: String, default: '' },
     promoStatus: { type: String, default: "false" },
-    promoCodes: { type: [String], default: [] }
+    promoCodes: { type: [String], default: [] },
+    status: {
+        type: String,
+        default: "active"
+    }
 }, {
     timestamps: true
 });
