@@ -37,7 +37,7 @@ router.post('/create-payments', verify, async (req, res) => {
             return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
         }
 
-        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === phone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             // Create a new payment object
             const newPayment = new PaymentModel({
                 image,
@@ -223,7 +223,7 @@ router.get('/get-partner-payments/:partnerPhone', verify, async (req, res) => {
         if (!partner) {
             return res.status(404).json({ message: "Partner not found" }); // If partner not found, return 404
         }
-        if (req.user.phone === req.params.partnerPhone && req.user.loggedInDevice === partner.loggedInDevice) {
+        if (req.user.phone === req.params.partnerPhone && req.user.loggedInDevice === partner.loggedInDevice && partner.status !== "blocked") {
             const { page = 1, pageSize = 5 } = req.query;
             const skip = (page - 1) * pageSize;
 
