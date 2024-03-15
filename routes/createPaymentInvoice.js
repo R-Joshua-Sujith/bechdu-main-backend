@@ -30,7 +30,7 @@ async function createPaymentInvoice(invoice) {
 
 function generateHeader(doc) {
     doc
-        .image(path.join(__dirname, "logo.png"), { width: 140, height: 50 })
+        .image(path.join(__dirname, "logo.png"), { width: 120, height: 40 })
         .fillColor("#444444")
         .fontSize(20)
         .fontSize(10)
@@ -92,21 +92,23 @@ function generateProductDetails(doc, invoice) {
         .text(`Rs ${invoice.transaction.price}`, 150, productDetailsTop + 70)
         .font("Helvetica")
         .text("GST:", 50, productDetailsTop + 90)
-    if (invoice.transaction.HomeState === invoice.transaction.partnerState) {
-        doc.text(`Rs ${invoice.transaction.gstPrice} (${invoice.transaction.gstPercentage}%)`, 150, productDetailsTop + 90);
+    if (invoice.transaction.HomeState !== invoice.transaction.partnerState) {
+        doc.text(`IGST: Rs ${invoice.transaction.gstPrice} (${invoice.transaction.gstPercentage}%)`, 150, productDetailsTop + 90);
     } else {
         // If different, split the GST percentage into half
+        const halfGSTPrice = invoice.transaction.gstPrice / 2
         const halfGstPercentage = invoice.transaction.gstPercentage / 2;
-        doc.text(`Rs ${invoice.transaction.gstPrice} (${halfGstPercentage}% + ${halfGstPercentage}%)`, 150, productDetailsTop + 90);
+        doc.text(`CSGT : Rs ${halfGSTPrice} (${halfGstPercentage}%)`, 150, productDetailsTop + 90);
+        doc.text(`SGST : Rs ${halfGSTPrice} (${halfGstPercentage}%) `, 150, productDetailsTop + 110);
     }
     doc
         .font("Helvetica")
-        .text("Total:", 50, productDetailsTop + 110)
-        .text(`Rs ${invoice.transaction.price + invoice.transaction.gstPrice}`, 150, productDetailsTop + 110)
+        .text("Total:", 50, productDetailsTop + 130)
+        .text(`Rs ${invoice.transaction.price + invoice.transaction.gstPrice}`, 150, productDetailsTop + 130)
         .font("Helvetica")
         .font("Helvetica")
-        .text("Date:", 50, productDetailsTop + 130)
-        .text(`${invoice.transaction.timestamp}`, 150, productDetailsTop + 130)
+        .text("Date:", 50, productDetailsTop + 150)
+        .text(`${invoice.transaction.timestamp}`, 150, productDetailsTop + 150)
         .font("Helvetica")
 
 

@@ -195,7 +195,7 @@ router.put('/update-payment/:id', verify, async (req, res) => {
                 partnerState: payment.partnerState,
                 HomeState: payment.HomeState,
                 coins: payment.coins,
-                message: "Bank Transfer Approved by admin"
+                message: "Approved by admin"
             })
             await partner.save();
         }

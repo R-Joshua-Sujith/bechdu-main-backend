@@ -300,6 +300,32 @@ router.put('/:orderId/cancel', async (req, res) => {
     }
 });
 
+router.put("/reschedule-order/:orderId", async (req, res) => {
+    const orderId = req.params.orderId;
+    const { pickUpDetails } = req.body;
+    try {
+
+        const order = await OrderModel.findById(orderId);
+
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+        order.logs.unshift({
+            message: `Order was rescheduled by Admin from ${order.pickUpDetails.date} ${pickUpDetails.time} to ${pickUpDetails.date} ${pickUpDetails.time} Reschedule reason : ${pickUpDetails.reason}`,
+        });
+
+        // Update the order status to 'cancel' and store the cancellation reason
+        order.pickUpDetails = pickUpDetails;
+        order.status = 'rescheduled';
+        await order.save();
+        res.status(200).json({ message: "Order rescheduled  successfully" });
+
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: error.message });
+    }
+})
+
 router.put('/:orderId/user-cancel', verify, async (req, res) => {
     const { orderId } = req.params;
     const { cancellationReason } = req.body;

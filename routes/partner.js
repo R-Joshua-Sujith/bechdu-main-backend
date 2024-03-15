@@ -43,10 +43,11 @@ router.post("/create-partner", async (req, res) => {
         } = req.body;
 
         // Check if partner with the provided phone number already exists
-        const existingPartner = await PartnerModel.findOne({ phone });
-        if (existingPartner) {
-            return res.status(409).json({ error: "A partner with this phone number already exists" });
+        const phoneExists = await PartnerModel.exists({ $or: [{ phone }, { 'pickUpPersons.phone': phone }] });
+        if (phoneExists) {
+            return res.status(400).json({ error: "Phone number already exists" });
         }
+
 
         const newPartner = new PartnerModel({
             phone,
